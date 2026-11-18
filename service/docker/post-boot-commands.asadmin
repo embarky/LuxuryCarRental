@@ -1,0 +1,22 @@
+# -------------------------------------------------------------------------
+# 1. Clear old resources
+# -------------------------------------------------------------------------
+delete-jdbc-resource jdbc/LuxuryCarRental
+delete-jdbc-connection-pool LuxuryCarRentalPool
+
+# -------------------------------------------------------------------------
+# 2. Final revised version creates a connection pool (must be a complete, secure line!)
+# -------------------------------------------------------------------------
+# Completely remove all newline and space traps
+create-jdbc-connection-pool --datasourceclassname com.mysql.cj.jdbc.MysqlDataSource --restype javax.sql.DataSource --property user=${ENV=DB_USER}:password=${ENV=DB_PASSWORD}:DatabaseName=${ENV=DB_NAME}:ServerName=${ENV=DB_HOST}:PortNumber=${ENV=DB_PORT}:useSSL=false:allowPublicKeyRetrieval=true:validation-required=true:validation-method=auto-commit LuxuryCarRentalPool
+
+# -------------------------------------------------------------------------
+# 3. Create resources
+# -------------------------------------------------------------------------
+create-jdbc-resource --connectionpoolid LuxuryCarRentalPool jdbc/LuxuryCarRental
+
+# -------------------------------------------------------------------------
+# 4. Deployment
+# -------------------------------------------------------------------------
+deploy --force=true --contextroot luxurycarrental /opt/payara/deployments/LuxuryCarRentalService-1.0-SNAPSHOT.war
+deploy --force=true --contextroot /LuxuryCarRental /opt/payara/deployments/LuxuryCarRental.war
