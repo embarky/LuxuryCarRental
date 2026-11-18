@@ -1,7 +1,5 @@
 # Luxury Car Rental
 
-[English](README.md) | [中文](README.zh-CN.md)
-
 A full-stack luxury car rental platform built with **Jakarta EE 10** using a classic **three-layer architecture**:
 a JSF web front end talks to a JAX-RS REST service, which persists a shared JPA domain model in MySQL.
 Everything runs on Payara and starts with a single `docker compose up`.
