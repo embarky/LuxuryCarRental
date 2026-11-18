@@ -19,7 +19,7 @@ public class CarClient implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private static final String BASE_URL = "http://localhost:8080/luxurycarrental/api/cars";
+    private static final String BASE_URL = ApiConfig.API_BASE_URL + "/cars";
     private final Client client;
     private final WebTarget carTarget;
 

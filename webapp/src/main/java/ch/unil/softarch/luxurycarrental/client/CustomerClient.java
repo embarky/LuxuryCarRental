@@ -19,7 +19,7 @@ import java.util.UUID;
 public class CustomerClient implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private static final String BASE_URL = "http://localhost:8080/luxurycarrental/api/customers";
+    private static final String BASE_URL = ApiConfig.API_BASE_URL + "/customers";
     private final Client client;
     private final WebTarget customerTarget;
 

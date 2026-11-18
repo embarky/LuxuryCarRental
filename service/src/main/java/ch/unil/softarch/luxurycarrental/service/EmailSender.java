@@ -10,15 +10,41 @@ import java.util.Properties;
 
 public class EmailSender {
 
-    private static final String USERNAME = "luxurycarrentalstore@gmail.com";       // Gmail
-    private static final String APP_PASSWORD = "***REMOVED***"; // Gmail pw
+    /*
+     * SMTP credentials are read from environment variables (see .env.example).
+     * If they are not set, emails are not sent but printed to the server log instead,
+     * so the application can be run locally without a mail account.
+     */
+    private static final String USERNAME = env("MAIL_USERNAME", "");
+    private static final String APP_PASSWORD = env("MAIL_APP_PASSWORD", "");
+    private static final String SMTP_HOST = env("MAIL_SMTP_HOST", "smtp.gmail.com");
+    private static final String SMTP_PORT = env("MAIL_SMTP_PORT", "587");
+
+    private static String env(String key, String defaultValue) {
+        String value = System.getenv(key);
+        return (value == null || value.isBlank()) ? defaultValue : value;
+    }
+
+    private static boolean mailConfigured() {
+        return !USERNAME.isEmpty() && !APP_PASSWORD.isEmpty();
+    }
+
+    private static void logInsteadOfSending(String to, String subject, String body) {
+        System.out.println("[EmailSender] MAIL_USERNAME / MAIL_APP_PASSWORD not set - email not sent.");
+        System.out.println("[EmailSender] To: " + to + " | Subject: " + subject);
+        System.out.println("[EmailSender] Body:\n" + body);
+    }
 
     public static void sendEmail(String to, String subject, String body) {
+        if (!mailConfigured()) {
+            logInsteadOfSending(to, subject, body);
+            return;
+        }
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.port", "587");
+        props.put("mail.smtp.host", SMTP_HOST);
+        props.put("mail.smtp.port", SMTP_PORT);
 
         Session session = Session.getInstance(props, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
@@ -48,11 +74,15 @@ public class EmailSender {
     }
 
     public static void sendEmailWithAttachment(String to, String subject, String htmlBody, byte[] pdfAttachment) {
+        if (!mailConfigured()) {
+            logInsteadOfSending(to, subject + " (with PDF attachment)", htmlBody);
+            return;
+        }
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", "smtp.gmail.com");
-        props.put("mail.smtp.port", "587");
+        props.put("mail.smtp.host", SMTP_HOST);
+        props.put("mail.smtp.port", SMTP_PORT);
 
         Session session = Session.getInstance(props, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {

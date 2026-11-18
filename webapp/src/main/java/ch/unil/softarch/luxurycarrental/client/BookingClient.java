@@ -18,7 +18,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class BookingClient implements Serializable {
 
-    private static final String BASE_URL = "http://localhost:8080/luxurycarrental/api/bookings";
+    private static final String BASE_URL = ApiConfig.API_BASE_URL + "/bookings";
     private final Client client;
     private final WebTarget bookingTarget;
 

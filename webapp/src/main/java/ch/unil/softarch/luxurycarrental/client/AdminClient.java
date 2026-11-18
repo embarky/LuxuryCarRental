@@ -19,7 +19,7 @@ import java.util.UUID;
 public class AdminClient implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private static final String BASE_URL = "http://localhost:8080/luxurycarrental/api/admins";
+    private static final String BASE_URL = ApiConfig.API_BASE_URL + "/admins";
     private final Client client;
     private final WebTarget adminTarget;
 

@@ -20,7 +20,7 @@ public class CarTypeClient implements Serializable {
     private static final long serialVersionUID = 1L;
 
     // Base URL for CarType REST API
-    private static final String BASE_URL = "http://localhost:8080/luxurycarrental/api/cartypes";
+    private static final String BASE_URL = ApiConfig.API_BASE_URL + "/cartypes";
 
     private final Client client;
     private final WebTarget carTypeTarget;
