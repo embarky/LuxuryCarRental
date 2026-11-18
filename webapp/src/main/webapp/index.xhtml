@@ -1,0 +1,96 @@
+<ui:composition template="/resources/templates/master_template.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ed="http://xmlns.jcp.org/jsf/composite/templates"> <ui:define name="content">
+
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1 class="hero-title">Luxury Driving Within Reach</h1>
+            <p class="hero-subtitle">Experience World's Top Luxury Cars and Exceptional Driving Pleasure</p>
+            <div class="hero-buttons">
+                <h:button value="Book Now" outcome="/pages/cars.xhtml" styleClass="btn btn-primary" />
+                <button class="btn-secondary">Learn More</button>
+            </div>
+        </div>
+        <div id="video-bg">
+            <iframe
+                    src="https://www.youtube.com/embed/NmoUJ60RNZs?autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=NmoUJ60RNZs&amp;controls=0&amp;disablekb=1&amp;cc_load_policy=0"
+                    frameborder="0"
+                    allow="autoplay; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen="allowfullscreen">
+            </iframe>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <h2 class="section-title">Why Choose <span>Us</span></h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">👑</div>
+                <h3>Premier Fleet</h3>
+                <p>Featuring Rolls-Royce, Bentley, Ferrari, and other world-class luxury brands. Every vehicle is strictly selected and professionally maintained.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Comprehensive Coverage</h3>
+                <p>Offering full-range insurance and 24-hour roadside assistance, ensuring your every journey is worry-free.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⭐</div>
+                <h3>Concierge Service</h3>
+                <p>Dedicated one-on-one account managers, delivery to your door, and chauffeur services to meet your every distinguished need.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💎</div>
+                <h3>Flexible Rental Terms</h3>
+                <p>Support hourly, daily, or long-term rentals. Flexible solutions to suit your various occasion needs.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cars-section" id="cars">
+        <h2 class="section-title">Available <span>Cars</span></h2>
+
+        <h:form id="carListForm">
+
+            <div class="cars-grid">
+                <ui:repeat value="#{carsBean.carList}" var="car">
+
+                    <ed:car_card_component
+                            carId="#{car.id}"
+                            model="#{car.carType.brand} #{car.carType.model}"
+                            engine="#{car.carType.engine}"
+                            seats="#{car.carType.seats}"
+                            price="#{car.dailyRentalPrice}"
+                            imageUrl="#{car.imageUrl}">
+                    </ed:car_card_component>
+
+                </ui:repeat>
+            </div>
+
+        </h:form>
+    </section>
+
+    <section class="stats">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>500+</h3>
+                <p>Luxury Vehicles</p>
+            </div>
+            <div class="stat-item">
+                <h3>10K+</h3>
+                <p>Satisfied Clients</p>
+            </div>
+            <div class="stat-item">
+                <h3>50+</h3>
+                <p>Service Cities</p>
+            </div>
+            <div class="stat-item">
+                <h3>24/7</h3>
+                <p>Full-Time Service</p>
+            </div>
+        </div>
+    </section>
+</ui:define>
+</ui:composition>
