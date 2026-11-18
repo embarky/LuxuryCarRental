@@ -1,0 +1,23 @@
+# Build output
+target/
+build/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Local environment (copy .env.example to .env)
+.env
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+.apt_generated
+nbproject/private/
+
+# OS
+.DS_Store

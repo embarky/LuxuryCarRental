@@ -4,18 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>ch.unil.softarch</groupId>
-    <artifactId>LuxuryCarRentalWebapp</artifactId>
-    <version>1.0-SNAPSHOT</version>
-    <name>LuxuryCarRentalWebapp</name>
-    <packaging>war</packaging>
+    <parent>
+        <groupId>ch.unil.softarch.luxurycarrental</groupId>
+        <artifactId>luxurycarrental-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.target>17</maven.compiler.target>
-        <maven.compiler.source>17</maven.compiler.source>
-        <junit.version>5.11.0</junit.version>
-    </properties>
+    <artifactId>luxurycarrental-webapp</artifactId>
+    <name>Presentation layer: JSF / PrimeFaces web UI</name>
+    <packaging>war</packaging>
 
     <dependencies>
         <dependency>
@@ -50,8 +47,8 @@
         </dependency>
         <dependency>
             <groupId>ch.unil.softarch.luxurycarrental</groupId>
-            <artifactId>LuxuryCarRentalDomain</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <artifactId>luxurycarrental-domain</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
@@ -64,6 +61,6 @@
             </plugin>
         </plugins>
 
-        <finalName>LuxuryCarRental</finalName>
+        <finalName>luxurycarrental-webapp</finalName>
     </build>
 </project>
