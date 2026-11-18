@@ -1,0 +1,30 @@
+services:
+  # Data layer: MySQL
+  db:
+    image: mysql:8.0.43
+    container_name: luxurycarrental-db
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Service layer (REST API) + presentation layer (JSF) on Payara
+  app:
+    build: .
+    container_name: luxurycarrental-app
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"   # web UI and REST API
+      - "4848:4848"   # Payara admin console
+
+volumes:
+  db_data:

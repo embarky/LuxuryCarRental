@@ -12,7 +12,7 @@
 
     <artifactId>luxurycarrental-domain</artifactId>
     <packaging>jar</packaging>
-    <name>Domain layer: JPA entities & enums</name>
+    <name>Domain layer: JPA entities and enums</name>
 
     <dependencies>
 

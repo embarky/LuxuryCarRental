@@ -1,0 +1,21 @@
+# -----------------------------------------------------------------------------
+# 0. Remove resources left over from a previous start of the same container
+# -----------------------------------------------------------------------------
+delete-jdbc-resource jdbc/LuxuryCarRental
+delete-jdbc-connection-pool LuxuryCarRentalPool
+
+# -----------------------------------------------------------------------------
+# 1. JDBC connection pool to MySQL (values come from environment variables)
+# -----------------------------------------------------------------------------
+create-jdbc-connection-pool --datasourceclassname com.mysql.cj.jdbc.MysqlDataSource --restype javax.sql.DataSource --property user=${ENV=DB_USER}:password=${ENV=DB_PASSWORD}:DatabaseName=${ENV=DB_NAME}:ServerName=${ENV=DB_HOST}:PortNumber=${ENV=DB_PORT}:useSSL=false:allowPublicKeyRetrieval=true:validation-required=true:validation-method=auto-commit LuxuryCarRentalPool
+
+# -----------------------------------------------------------------------------
+# 2. JNDI resource used by persistence.xml (jdbc/LuxuryCarRental)
+# -----------------------------------------------------------------------------
+create-jdbc-resource --connectionpoolid LuxuryCarRentalPool jdbc/LuxuryCarRental
+
+# -----------------------------------------------------------------------------
+# 3. Deploy service layer (REST API) and presentation layer (JSF web UI)
+# -----------------------------------------------------------------------------
+deploy --force=true --contextroot /luxurycarrental /opt/payara/apps/luxurycarrental-service.war
+deploy --force=true --contextroot /LuxuryCarRental /opt/payara/apps/luxurycarrental-webapp.war
