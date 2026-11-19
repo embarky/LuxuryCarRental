@@ -8,7 +8,8 @@ A full-stack car rental platform built with **Jakarta EE 10** in a classic **thr
 a JSF web front end calls a secured JAX-RS REST service, which keeps a shared domain model in MySQL
 through JPA. Everything runs on Payara and starts with a single `docker compose up`.
 
-Developed for the *Software Architecture* course at the University of Lausanne (UNIL), 2025.
+Started as a group project (five students) for the *Software Architecture* course at the University of Lausanne (UNIL), 2025,
+and developed further on my own since then – see [History](#history).
 
 ## Screenshots
 
@@ -237,10 +238,16 @@ Errors are always JSON: `{"status": 409, "message": "This car is already booked 
 
 ## History
 
-The project was originally developed as three separate repositories (`LuxuryCarRentalDomain`,
-`LuxuryCarRentalService`, `LuxuryCarRentalWebapp`) and merged into this monorepo with the full commit
-history preserved. In November 2026 it was reworked with the help of an AI coding assistant (Claude):
-booking rules and money handling, API security, emails, demo data and a new user interface.
+**2025 – course project.** The application was a group project of five students in the *Software
+Architecture* course at UNIL. The software and architecture design (the three layers, the domain model,
+the REST interface) was worked out together by the group. I built the implementation of the original
+version on my own: the domain, service and web layers, at that time in three separate repositories
+(`LuxuryCarRentalDomain`, `LuxuryCarRentalService`, `LuxuryCarRentalWebapp`).
+
+**Since November 2026 – own work.** I merged the three repositories into this one, keeping the full
+commit history, and reworked the project on my own with the help of an AI coding assistant (Claude):
+booking rules and money handling, API security, email confirmation, Flyway migrations, integration
+tests with Testcontainers, CI, demo data, a new user interface and the design records in `docs/adr`.
 
 ## Author
 
