@@ -19,8 +19,9 @@
                     <li><h:link value="Admin" outcome="/pages/admin/dashboard.xhtml"/></li>
                 </h:panelGroup>
 
-                <!-- Not logged in as customer: login link -->
+                <!-- Not logged in as customer: sign-up and login links -->
                 <h:panelGroup rendered="#{not customerSessionBean.loggedIn}">
+                    <li><h:link value="Sign up" outcome="/pages/register.xhtml"/></li>
                     <li><h:link value="Login" outcome="/pages/login.xhtml"/></li>
                 </h:panelGroup>
 
