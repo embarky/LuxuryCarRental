@@ -17,6 +17,25 @@
         <module>webapp</module>
     </modules>
 
+    <!--
+        The integration tests start the real server and MySQL in Docker (Testcontainers).
+        They are part of "mvn verify" whenever the module is there; the Docker image build
+        copies only the three application modules, so it skips them.
+    -->
+    <profiles>
+        <profile>
+            <id>integration-tests</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/integration-tests/pom.xml</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>integration-tests</module>
+            </modules>
+        </profile>
+    </profiles>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
