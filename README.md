@@ -9,9 +9,6 @@ A full-stack car rental platform built with **Jakarta EE 10** in a classic **thr
 a JSF web front end calls a secured JAX-RS REST service, which keeps a shared domain model in MySQL
 through JPA. Everything runs on Payara and starts with a single `docker compose up`.
 
-Started as a group project (five students) for the *Software Architecture* course at the University of Lausanne (UNIL), 2025,
-and developed further on my own since then – see [History](#history).
-
 ## Screenshots
 
 | Home page | Car page with live price |
