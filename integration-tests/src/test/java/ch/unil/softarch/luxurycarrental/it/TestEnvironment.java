@@ -5,6 +5,7 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.WaitAllStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.slf4j.LoggerFactory;
 
@@ -61,8 +62,12 @@ final class TestEnvironment {
             .withEnv("MAIL_SMTP_PORT", "1025")
             .withEnv("MAIL_SMTP_STARTTLS", "false")
             .dependsOn(MYSQL, MAILPIT)
-            .waitingFor(Wait.forHttp("/luxurycarrental/api/cars").forPort(8080).forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(4)))
+            // ready when both applications answer (the web front end is deployed after the API)
+            .waitingFor(new WaitAllStrategy(WaitAllStrategy.Mode.WITH_INDIVIDUAL_TIMEOUTS_ONLY)
+                    .withStrategy(Wait.forHttp("/luxurycarrental/api/cars/search").forPort(8080).forStatusCode(200)
+                            .withStartupTimeout(Duration.ofMinutes(4)))
+                    .withStrategy(Wait.forHttp("/LuxuryCarRental/").forPort(8080).forStatusCode(200)
+                            .withStartupTimeout(Duration.ofMinutes(1))))
             .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("payara")).withPrefix("payara"));
 
     private static boolean started;

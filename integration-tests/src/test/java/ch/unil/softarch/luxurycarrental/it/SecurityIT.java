@@ -27,7 +27,8 @@ class SecurityIT extends ApiTest {
 
     @Test
     void withoutATokenOnlyPublicEndpointsAnswer() {
-        assertEquals(200, Http.get("/cars", null).status());
+        assertEquals(200, Http.get("/cars/search", null).status());
+        assertEquals(401, Http.get("/cars", null).status());          // the full list with maintenance cars is for staff
         assertEquals(401, Http.get("/bookings", null).status());
         assertEquals(401, Http.get("/customers/" + alice.id(), null).status());
     }
