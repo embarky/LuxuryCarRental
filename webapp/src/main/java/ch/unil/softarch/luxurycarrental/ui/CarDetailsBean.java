@@ -1,111 +1,118 @@
 package ch.unil.softarch.luxurycarrental.ui;
 
-import ch.unil.softarch.luxurycarrental.client.CarClient;
-import ch.unil.softarch.luxurycarrental.client.BookingClient;
+import ch.unil.softarch.luxurycarrental.client.Api;
+import ch.unil.softarch.luxurycarrental.client.ApiException;
+import ch.unil.softarch.luxurycarrental.domain.dto.BookedPeriod;
 import ch.unil.softarch.luxurycarrental.domain.entities.Car;
-import ch.unil.softarch.luxurycarrental.ui.CustomerSessionBean;
-
-import jakarta.annotation.PostConstruct;
-import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
 import jakarta.faces.view.ViewScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Map;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
+/** A car's page: specifications, booked dates, live price and booking. */
 @Named("carDetailsBean")
 @ViewScoped
 public class CarDetailsBean implements Serializable {
 
-    @Inject
-    private CarClient carClient;
+    private static final long serialVersionUID = 1L;
 
     @Inject
-    private BookingClient bookingClient;
+    private Api api;
 
     @Inject
-    private CustomerSessionBean customerSessionBean;
+    private CustomerSessionBean session;
 
+    private String carId;
     private Car car;
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private List<BookedPeriod> booked = Collections.emptyList();
+    private LocalDate start;
+    private LocalDate end;
 
-    @PostConstruct
-    public void init() {
-        Map<String, String> params = FacesContext.getCurrentInstance()
-                .getExternalContext()
-                .getRequestParameterMap();
-        String idStr = params.get("carId");
-        if (idStr != null) {
-            try {
-                car = carClient.getCar(UUID.fromString(idStr));
-            } catch (Exception e) {
-                FacesContext.getCurrentInstance().addMessage(null,
-                        new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error",
-                                "Car not found: " + e.getMessage()));
-            }
+    /** Called from f:viewAction once the view parameters are set. */
+    public void load() {
+        if (car != null || FacesContext.getCurrentInstance().isPostback()) {
+            return;
+        }
+        try {
+            UUID id = UUID.fromString(carId);
+            car = api.car(id);
+            booked = api.bookedPeriods(id);
+        } catch (IllegalArgumentException | NullPointerException e) {
+            Messages.error("This car does not exist.");
+        } catch (ApiException e) {
+            Messages.error(e);
         }
     }
 
-    // Getter / Setter
-    public Car getCar() { return car; }
-    public LocalDate getStartDate() { return startDate; }
-    public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
-    public LocalDate getEndDate() { return endDate; }
-    public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+    // ---- price preview ------------------------------------------------------
 
-    /**
-     * Sends a visitor who is not logged in to the login page, and back to this car afterwards.
-     */
+    public boolean isPeriodValid() {
+        return start != null && end != null && end.isAfter(start) && !start.isBefore(LocalDate.now());
+    }
+
+    public long getDays() {
+        return isPeriodValid() ? ChronoUnit.DAYS.between(start, end) : 0;
+    }
+
+    public BigDecimal getRental() {
+        return car == null ? BigDecimal.ZERO : car.getDailyRentalPrice().multiply(BigDecimal.valueOf(getDays()));
+    }
+
+    public BigDecimal getTotalDue() {
+        return car == null ? BigDecimal.ZERO : getRental().add(car.getDepositAmount());
+    }
+
+    /** True if the chosen dates overlap a booked period (shown before submitting). */
+    public boolean isOverlapping() {
+        if (!isPeriodValid()) {
+            return false;
+        }
+        return booked.stream().anyMatch(p -> start.isBefore(p.endDate) && p.startDate.isBefore(end));
+    }
+
+    // ---- actions ------------------------------------------------------------
+
+    /** Sends a visitor to the login page and back to this car afterwards. */
     public String loginToBook() {
-        String target = "/pages/cars_details.xhtml" + (car != null ? "?carId=" + car.getId() : "");
-        LoginRedirect.remember(LoginRedirect.CUSTOMER_TARGET, target);
+        LoginRedirect.remember(LoginRedirect.CUSTOMER_TARGET, "/pages/cars_details.xhtml?carId=" + car.getId()
+                + (isPeriodValid() ? "&start=" + start + "&end=" + end : ""));
         return "/pages/login.xhtml?faces-redirect=true";
     }
 
-    // Book the car
-    public String bookCar() {
-        FacesContext context = FacesContext.getCurrentInstance();
-
-        if (!customerSessionBean.isLoggedIn() || customerSessionBean.getCustomer() == null) {
-            // The session may have expired while the page was open
+    public String book() {
+        if (!session.isLoggedIn()) {
             return loginToBook();
         }
-
-        if (startDate == null || endDate == null) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Error", "Please select start and end dates."));
+        if (!isPeriodValid()) {
+            Messages.warn("Please choose a pick-up date from today and a later return date.");
             return null;
         }
-
-        if (!endDate.isAfter(startDate)) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Error", "End date must be after start date."));
-            return null;
-        }
-
         try {
-            UUID customerId = customerSessionBean.getCustomer().getId(); // logged-in customer from the session
-            bookingClient.createBooking(customerId, car.getId(), startDate, endDate);
-
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_INFO, "Success",
-                            "Booking created successfully for car "
-                                    + car.getCarType().getBrand() + " " + car.getCarType().getModel()
-                                    + " from " + startDate + " to " + endDate));
-
-            startDate = null;
-            endDate = null;
-
-        } catch (Exception e) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error",
-                            "Failed to create booking: " + e.getMessage()));
+            api.book(session.getCustomer().getId(), car.getId(), start, end);
+            Messages.info("Your " + car.getDisplayName() + " is reserved. Pay within 24 hours to confirm it.");
+            Messages.keep();
+            return "/pages/orders.xhtml?faces-redirect=true";
+        } catch (ApiException e) {
+            Messages.error(e);
+            booked = api.bookedPeriods(car.getId());
+            return null;
         }
-        return null;
     }
+
+    public String getCarId() { return carId; }
+    public void setCarId(String carId) { this.carId = carId; }
+    public Car getCar() { return car; }
+    public List<BookedPeriod> getBooked() { return booked; }
+    public LocalDate getStart() { return start; }
+    public void setStart(LocalDate start) { this.start = start; }
+    public LocalDate getEnd() { return end; }
+    public void setEnd(LocalDate end) { this.end = end; }
 }

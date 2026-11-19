@@ -1,118 +1,93 @@
-<ui:composition
+<ui:composition template="/WEB-INF/templates/admin.xhtml"
                 xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
                 xmlns:h="http://xmlns.jcp.org/jsf/html"
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
-                xmlns:p="http://primefaces.org/ui"
-                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-                template="/WEB-INF/templates/admin.xhtml">
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
 
     <ui:param name="activePage" value="car_type"/>
 
     <ui:define name="metadata">
         <f:metadata>
-        <f:viewParam name="carTypeId" value="#{carTypeFormBean.carTypeId}" converter="#{carTypeFormBean.uuidConverter}"/>
-    </f:metadata>
+            <f:viewParam name="id" value="#{carTypeFormBean.id}"/>
+            <f:viewAction action="#{carTypeFormBean.load}"/>
+        </f:metadata>
     </ui:define>
 
-    <ui:define name="title">Car Type Form</ui:define>
+    <ui:define name="title">#{carTypeFormBean.editing ? 'Edit car type' : 'Add a car type'}</ui:define>
 
     <ui:define name="content">
+        <div class="page-header">
+            <div>
+                <h:link value="← Car types" outcome="/pages/admin/car_type.xhtml" styleClass="small"/>
+                <h1>#{carTypeFormBean.editing ? 'Edit car type' : 'Add a car type'}</h1>
+            </div>
+        </div>
 
-    <p:messages id="globalMessages" autoUpdate="true" closable="true" showDetail="true" />
-    
-
-    <div class="container mt-5">
-        <h2 class="mb-4 text-center">
-            #{carTypeFormBean.editing ? 'Edit Car Type' : 'Create New Car Type'}
-        </h2>
-
-        <h:form id="carTypeForm">
-            <h:messages styleClass="text-danger mb-3" globalOnly="true"/>
-
-            <div class="card shadow p-4">
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="brand" class="form-label">Brand *</label>
-                        <h:inputText id="brand" value="#{carTypeFormBean.carType.brand}"
-                                     required="true" styleClass="form-control"/>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="model" class="form-label">Model *</label>
-                        <h:inputText id="model" value="#{carTypeFormBean.carType.model}"
-                                     required="true" styleClass="form-control"/>
-                    </div>
+        <h:form styleClass="card" rendered="#{carTypeFormBean.carType ne null}" style="max-width: 860px;">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="brand">Brand</label>
+                    <h:inputText id="brand" value="#{carTypeFormBean.carType.brand}"/>
                 </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label for="category" class="form-label">Category</label>
-                        <h:inputText id="category" value="#{carTypeFormBean.carType.category}"
-                                     styleClass="form-control"/>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="engine" class="form-label">Engine</label>
-                        <h:inputText id="engine" value="#{carTypeFormBean.carType.engine}"
-                                     styleClass="form-control"/>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="power" class="form-label">Power (HP)</label>
-                        <h:inputText id="power" value="#{carTypeFormBean.carType.power}"
-                                     styleClass="form-control"/>
-                    </div>
-                    <div class="col-md-2">
-                        <label for="seats" class="form-label">Seats</label>
-                        <h:inputText id="seats" value="#{carTypeFormBean.carType.seats}"
-                                     styleClass="form-control"/>
-                    </div>
+                <div class="field">
+                    <label for="model">Model</label>
+                    <h:inputText id="model" value="#{carTypeFormBean.carType.model}"/>
                 </div>
-
-                <div class="mb-3">
-                    <label for="description" class="form-label">Description</label>
-                    <h:inputTextarea id="description" value="#{carTypeFormBean.carType.description}"
-                                     rows="4" styleClass="form-control"/>
+                <div class="field">
+                    <label for="category">Category</label>
+                    <h:inputText id="category" value="#{carTypeFormBean.carType.category}" pt:placeholder="Sport, SUV, Electric..."/>
                 </div>
-
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="driveType" class="form-label">Drive Type *</label>
-                        <h:selectOneMenu id="driveType" value="#{carTypeFormBean.carType.driveType}"
-                                         required="true" styleClass="form-select">
-                            <f:selectItem itemLabel="Select Drive Type" itemValue="" />
-                            <f:selectItems value="#{carTypeFormBean.driveTypes}" var="dt"
-                                           itemLabel="#{dt}" itemValue="#{dt}" />
-                        </h:selectOneMenu>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="transmission" class="form-label">Transmission *</label>
-                        <h:selectOneMenu id="transmission" value="#{carTypeFormBean.carType.transmission}"
-                                         required="true" styleClass="form-select">
-                            <f:selectItem itemLabel="Select Transmission" itemValue="" />
-                            <f:selectItems value="#{carTypeFormBean.transmissions}" var="tr"
-                                           itemLabel="#{tr}" itemValue="#{tr}" />
-                        </h:selectOneMenu>
-                    </div>
+                <div class="field">
+                    <label for="engine">Engine</label>
+                    <h:inputText id="engine" value="#{carTypeFormBean.carType.engine}" pt:placeholder="3.0L twin-turbo"/>
                 </div>
-
-                <div class="mb-3">
-                    <label for="features" class="form-label">Features (comma separated)</label>
-                    <h:inputTextarea id="features" value="#{carTypeFormBean.featuresAsString}"
-                                     rows="2" styleClass="form-control"/>
+                <div class="field">
+                    <label for="power">Power (hp)</label>
+                    <h:inputText id="power" value="#{carTypeFormBean.carType.power}" pt:type="number" pt:min="0"/>
                 </div>
-
-                <div class="d-flex justify-content-end gap-2 mt-4">
-                    <h:commandButton value="Save" action="#{carTypeFormBean.save}"
-                                     styleClass="btn btn-success"/>
-                    <h:commandButton value="Cancel"
-                                     action="/pages/admin/car_type.xhtml?faces-redirect=true"
-                                     styleClass="btn btn-secondary"
-                                     process="@this"
-                                     immediate="true"/>
+                <div class="field">
+                    <label for="speed">Top speed (km/h)</label>
+                    <h:inputText id="speed" value="#{carTypeFormBean.carType.maxSpeed}" pt:type="number" pt:min="0"/>
                 </div>
-
+                <div class="field">
+                    <label for="acceleration">0–100 km/h (s)</label>
+                    <h:inputText id="acceleration" value="#{carTypeFormBean.carType.acceleration}" pt:type="number" pt:min="0" pt:step="0.1"/>
+                </div>
+                <div class="field">
+                    <label for="weight">Weight (kg)</label>
+                    <h:inputText id="weight" value="#{carTypeFormBean.carType.weight}" pt:type="number" pt:min="0"/>
+                </div>
+                <div class="field">
+                    <label for="seats">Seats</label>
+                    <h:inputText id="seats" value="#{carTypeFormBean.carType.seats}" pt:type="number" pt:min="1" pt:max="9"/>
+                </div>
+                <div class="field">
+                    <label for="drive">Drive</label>
+                    <h:selectOneMenu id="drive" value="#{carTypeFormBean.carType.driveType}">
+                        <f:selectItems value="#{carTypeFormBean.driveTypes}"/>
+                    </h:selectOneMenu>
+                </div>
+                <div class="field">
+                    <label for="gearbox">Gearbox</label>
+                    <h:selectOneMenu id="gearbox" value="#{carTypeFormBean.carType.transmission}">
+                        <f:selectItems value="#{carTypeFormBean.transmissions}"/>
+                    </h:selectOneMenu>
+                </div>
+                <div class="field full">
+                    <label for="features">Features</label>
+                    <h:inputText id="features" value="#{carTypeFormBean.features}" pt:placeholder="GPS, Heated seats, Panoramic roof"/>
+                    <span class="hint">Separate them with commas.</span>
+                </div>
+                <div class="field full">
+                    <label for="description">Description</label>
+                    <h:inputTextarea id="description" value="#{carTypeFormBean.carType.description}"/>
+                </div>
+            </div>
+            <div class="form-actions">
+                <h:commandButton value="Save" action="#{carTypeFormBean.save}" styleClass="btn btn-primary"/>
+                <h:link value="Cancel" outcome="/pages/admin/car_type.xhtml" styleClass="btn btn-outline"/>
             </div>
         </h:form>
-    </div>
     </ui:define>
-
 </ui:composition>

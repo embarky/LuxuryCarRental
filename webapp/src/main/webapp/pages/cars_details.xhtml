@@ -1,77 +1,141 @@
-<ui:composition xmlns="http://www.w3.org/1999/xhtml"
-                xmlns:h="http://xmlns.jcp.org/jsf/html"
-                xmlns:p="http://primefaces.org/ui"
-                xmlns:f="http://xmlns.jcp.org/jsf/core"
+<ui:composition template="/resources/templates/master_template.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
                 xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-                template="/resources/templates/master_template.xhtml">
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
 
-    <ui:define name="title">Car Details · Luxury Car Rental</ui:define>
-
-    <ui:define name="content">
-        <div class="page-shell">
-        <h:form id="detailsForm">
-
-            <p:growl id="growl" showDetail="true" life="5000"/>
-
-            <p:panel header="Car Details" styleClass="shadow p-4 mb-4">
-                <h:panelGrid columns="2" columnClasses="image-col,info-col" cellpadding="15">
-
-                    <p:panel styleClass="car-image-panel">
-                        <h:graphicImage value="#{carDetailsBean.car.imageUrl}"
-                                        style="width:100%; height:auto; border-radius:8px; object-fit:cover"/>
-                    </p:panel>
-
-                    <p:panel styleClass="car-info-panel p-3">
-                        <h2>#{carDetailsBean.car.carType.brand} #{carDetailsBean.car.carType.model}</h2>
-                        <p><strong>Category:</strong> #{carDetailsBean.car.carType.category}</p>
-                        <p><strong>Description:</strong> #{carDetailsBean.car.carType.description}</p>
-                        <p><strong>Engine:</strong> #{carDetailsBean.car.carType.engine}</p>
-                        <p><strong>Power:</strong> #{carDetailsBean.car.carType.power} HP</p>
-                        <p><strong>Seats:</strong> #{carDetailsBean.car.carType.seats}</p>
-                        <p><strong>Transmission:</strong> #{carDetailsBean.car.carType.transmission}</p>
-                        <p><strong>Drive Type:</strong> #{carDetailsBean.car.carType.driveType}</p>
-                        <p><strong>Daily Price:</strong> CHF #{carDetailsBean.car.dailyRentalPrice}</p>
-                        <p><strong>Status:</strong> #{carDetailsBean.car.status}</p>
-                    </p:panel>
-                </h:panelGrid>
-
-                <p:panel header="Features" styleClass="mt-4">
-                    <ul>
-                        <ui:repeat value="#{carDetailsBean.car.carType.features}" var="f">
-                            <li>#{f}</li>
-                        </ui:repeat>
-                    </ul>
-                </p:panel>
-            </p:panel>
-
-            <p:panel header="Book This Car" styleClass="shadow p-4 mt-4">
-                <!-- Logged in: choose dates and book -->
-                <h:panelGroup rendered="#{customerSessionBean.loggedIn}">
-                    <p:calendar id="startDate" value="#{carDetailsBean.startDate}" pattern="yyyy-MM-dd"
-                                label="Start Date" showIcon="true" required="true"/>
-                    <p:calendar id="endDate" value="#{carDetailsBean.endDate}" pattern="yyyy-MM-dd"
-                                label="End Date" showIcon="true" required="true"/>
-
-                    <p:commandButton value="Book This Car"
-                                     action="#{carDetailsBean.bookCar}"
-                                     update="growl"
-                                     process="@form"
-                                     ajax="true"/>
-                </h:panelGroup>
-
-                <!-- Not logged in: go to the login page and come back here afterwards -->
-                <h:panelGroup rendered="#{not customerSessionBean.loggedIn}">
-                    <p>Log in to choose your dates and book this car.</p>
-                    <p:commandButton value="Log in to book"
-                                     icon="pi pi-sign-in"
-                                     action="#{carDetailsBean.loginToBook}"
-                                     process="@this"
-                                     ajax="false"/>
-                </h:panelGroup>
-            </p:panel>
-
-        </h:form>
-        </div>
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam name="carId" value="#{carDetailsBean.carId}"/>
+            <f:viewParam name="start" value="#{carDetailsBean.start}">
+                <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+            </f:viewParam>
+            <f:viewParam name="end" value="#{carDetailsBean.end}">
+                <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+            </f:viewParam>
+            <f:viewAction action="#{carDetailsBean.load}"/>
+        </f:metadata>
     </ui:define>
 
+    <ui:define name="title">#{carDetailsBean.car.displayName}</ui:define>
+
+    <ui:define name="content">
+        <div class="page">
+            <h:panelGroup rendered="#{carDetailsBean.car eq null}" layout="block" styleClass="card empty">
+                <h3>Car not found</h3>
+                <p><h:link value="Back to all cars" outcome="/pages/cars.xhtml"/></p>
+            </h:panelGroup>
+
+            <h:panelGroup rendered="#{carDetailsBean.car ne null}" layout="block" styleClass="layout-aside">
+                <!-- Left: the car -->
+                <div class="stack">
+                    <div>
+                        <h:link value="← All cars" outcome="/pages/cars.xhtml" styleClass="small"/>
+                        <div class="page-header" style="margin: 8px 0 0;">
+                            <div>
+                                <span class="badge badge-gold">#{carDetailsBean.car.carType.category}</span>
+                                <h1 style="margin-top: 8px;">#{carDetailsBean.car.displayName}</h1>
+                                <p>#{carDetailsBean.car.color} · #{carDetailsBean.car.licensePlate}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="car-hero-image" style="background-image: url('#{carDetailsBean.car.imageUrl}');"></div>
+
+                    <div class="card">
+                        <h2>Specifications</h2>
+                        <p class="card-lead">#{carDetailsBean.car.carType.description}</p>
+                        <div class="spec-grid">
+                            <div class="spec"><span>Engine</span><strong>#{carDetailsBean.car.carType.engine}</strong></div>
+                            <div class="spec"><span>Power</span><strong>#{carDetailsBean.car.carType.power} hp</strong></div>
+                            <div class="spec"><span>0–100 km/h</span><strong>#{carDetailsBean.car.carType.acceleration} s</strong></div>
+                            <div class="spec"><span>Top speed</span><strong>#{carDetailsBean.car.carType.maxSpeed} km/h</strong></div>
+                            <div class="spec"><span>Seats</span><strong>#{carDetailsBean.car.carType.seats}</strong></div>
+                            <div class="spec"><span>Gearbox</span><strong>#{carDetailsBean.car.carType.transmission}</strong></div>
+                        </div>
+                        <h:panelGroup layout="block" styleClass="chips" style="margin-top: 16px;"
+                                      rendered="#{not empty carDetailsBean.car.carType.features}">
+                            <ui:repeat value="#{carDetailsBean.car.carType.features}" var="feature">
+                                <span class="chip">#{feature}</span>
+                            </ui:repeat>
+                        </h:panelGroup>
+                    </div>
+
+                    <div class="card">
+                        <h2>Already booked</h2>
+                        <p class="card-lead">The car is not available on these dates.</p>
+                        <h:panelGroup rendered="#{empty carDetailsBean.booked}">
+                            <p class="muted">No bookings yet – every date is free.</p>
+                        </h:panelGroup>
+                        <div class="chips">
+                            <ui:repeat value="#{carDetailsBean.booked}" var="p">
+                                <span class="chip">#{fmt.date(p.startDate)} – #{fmt.date(p.endDate)}</span>
+                            </ui:repeat>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: booking -->
+                <h:form id="booking" styleClass="card sticky">
+                    <div class="spread">
+                        <span class="car-card-price">#{fmt.chf(carDetailsBean.car.dailyRentalPrice)} <small>/ day</small></span>
+                    </div>
+                    <p class="muted small" style="margin: 4px 0 18px;">
+                        Refundable deposit #{fmt.chf(carDetailsBean.car.depositAmount)}
+                    </p>
+
+                    <div class="grid-2" style="gap: 12px;">
+                        <div class="field">
+                            <label for="start">Pick-up</label>
+                            <h:inputText id="start" value="#{carDetailsBean.start}" pt:type="date" pt:min="#{fmt.today()}">
+                                <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                                <f:ajax event="change" render="summary"/>
+                            </h:inputText>
+                        </div>
+                        <div class="field">
+                            <label for="end">Return</label>
+                            <h:inputText id="end" value="#{carDetailsBean.end}" pt:type="date" pt:min="#{fmt.tomorrow()}">
+                                <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                                <f:ajax event="change" render="summary"/>
+                            </h:inputText>
+                        </div>
+                    </div>
+
+                    <h:panelGroup id="summary" layout="block" style="margin-top: 18px;">
+                        <h:panelGroup rendered="#{carDetailsBean.periodValid}">
+                            <dl class="kv">
+                                <dt>#{carDetailsBean.days} day(s) × #{fmt.chf(carDetailsBean.car.dailyRentalPrice)}</dt>
+                                <dd>#{fmt.chf(carDetailsBean.rental)}</dd>
+                                <dt>Deposit (refunded on return)</dt>
+                                <dd>#{fmt.chf(carDetailsBean.car.depositAmount)}</dd>
+                            </dl>
+                            <div class="summary-total">
+                                <span>To pay</span>
+                                <span>#{fmt.chf(carDetailsBean.totalDue)}</span>
+                            </div>
+                            <h:panelGroup rendered="#{carDetailsBean.overlapping}" layout="block"
+                                          styleClass="notice notice-warn" style="margin-top: 14px;">
+                                These dates overlap a booking that is already taken. Please choose other dates.
+                            </h:panelGroup>
+                        </h:panelGroup>
+                        <h:panelGroup rendered="#{not carDetailsBean.periodValid}">
+                            <p class="muted small">Choose a pick-up date from today and a later return date to see the price.</p>
+                        </h:panelGroup>
+                    </h:panelGroup>
+
+                    <div class="form-actions">
+                        <h:commandButton value="Reserve this car" action="#{carDetailsBean.book}"
+                                         rendered="#{customerSessionBean.loggedIn}" styleClass="btn btn-primary btn-block"/>
+                        <h:commandButton value="Log in to reserve" action="#{carDetailsBean.loginToBook}"
+                                         rendered="#{not customerSessionBean.loggedIn}" styleClass="btn btn-dark btn-block"/>
+                    </div>
+                    <p class="muted small" style="margin-top: 12px;">
+                        Nothing is charged now. Pay within 24 hours from <i>My bookings</i> to confirm.
+                        Free cancellation until 48 hours before pick-up.
+                    </p>
+                </h:form>
+            </h:panelGroup>
+        </div>
+    </ui:define>
 </ui:composition>

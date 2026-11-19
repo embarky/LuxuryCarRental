@@ -1,89 +1,44 @@
-<ui:composition
+<ui:composition template="/resources/templates/master_template.xhtml"
                 xmlns="http://www.w3.org/1999/xhtml"
-                xmlns:h="http://xmlns.jcp.org/jsf/html"
-                xmlns:f="http://xmlns.jcp.org/jsf/core"
-                xmlns:p="http://primefaces.org/ui"
                 xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-                template="/resources/templates/master_template.xhtml">
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
 
-    <ui:define name="title">Login · Luxury Car Rental</ui:define>
+    <ui:define name="title">Log in</ui:define>
 
     <ui:define name="content">
-        <div class="page-shell">
-            <div class="page-card">
-    <!-- Global messages at the top -->
-    <p:messages id="globalMessages" autoUpdate="true" closable="true" showDetail="true" />
+        <div class="page page-narrow">
+            <h:form styleClass="card auth-card">
+                <h1>Welcome back</h1>
+                <p class="muted" style="margin-bottom: 22px;">Log in to book a car and manage your bookings.</p>
 
-    <h2>User Login</h2>
+                <div class="stack">
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <h:inputText id="email" value="#{customerSessionBean.email}" required="true"
+                                     requiredMessage="Please enter your email."
+                                     pt:type="email" pt:autocomplete="email" pt:autofocus="autofocus"/>
+                    </div>
+                    <div class="field">
+                        <div class="spread">
+                            <label for="password">Password</label>
+                            <h:link value="Forgot password?" outcome="/pages/reset-password.xhtml" styleClass="small"/>
+                        </div>
+                        <h:inputSecret id="password" value="#{customerSessionBean.password}" required="true"
+                                       requiredMessage="Please enter your password." pt:autocomplete="current-password"/>
+                    </div>
+                </div>
 
-    <p:tabView dynamic="false" cache="false" activeIndex="#{param.role eq 'admin' ? 1 : 0}">
+                <h:messages globalOnly="false" showSummary="true" styleClass="notice notice-error"
+                            style="list-style: none; margin-top: 16px;" rendered="#{facesContext.validationFailed}"/>
 
-        <!-- Customer Login -->
-        <p:tab title="Customer Login">
-            <h:form id="customerForm">
+                <div class="form-actions">
+                    <h:commandButton value="Log in" action="#{customerSessionBean.login}" styleClass="btn btn-primary btn-block"/>
+                </div>
 
-                <p:panelGrid columns="2" cellpadding="5">
-                    <h:outputLabel for="customerEmail" value="Email:"/>
-                    <h:inputText id="customerEmail" value="#{customerSessionBean.email}" required="true"
-                                 requiredMessage="Customer Email is required"/>
-
-                    <h:outputLabel for="customerPassword" value="Password:"/>
-                    <h:inputSecret id="customerPassword" value="#{customerSessionBean.password}" required="true"
-                                   requiredMessage="Customer Password is required"/>
-                </p:panelGrid>
-
-                <p:commandButton value="Login as Customer"
-                                 action="#{customerSessionBean.login}"
-                                 process="@form"
-                                 update="globalMessages"
-                                 icon="pi pi-sign-in"
-                                 ajax="true" />
-                <!-- Extra links: Sign up & Forgot password -->
-                <p:separator />
-
-                <h:panelGroup layout="block" style="text-align:center;">
-                    <h:link value="Create an Account" outcome="/pages/register.xhtml"/>
-                    <br/>
-                    <h:link value="Forgot Password?" outcome="/pages/reset-password.xhtml"/>
-                </h:panelGroup>
+                <p class="auth-footer">New here? <h:link value="Create an account" outcome="/pages/register.xhtml"/></p>
+                <p class="auth-footer small">Staff? <h:link value="Administrator login" outcome="/pages/staff-login.xhtml"/></p>
             </h:form>
-        </p:tab>
-
-        <!-- Admin Login -->
-        <p:tab title="Admin Login">
-            <h:form id="adminForm">
-
-                <p:panelGrid columns="2" cellpadding="5">
-                    <h:outputLabel for="adminEmail" value="Email:"/>
-                    <h:inputText id="adminEmail" value="#{adminSessionBean.email}" required="true"
-                                 requiredMessage="Admin Email is required"/>
-
-                    <h:outputLabel for="adminPassword" value="Password:"/>
-                    <h:inputSecret id="adminPassword" value="#{adminSessionBean.password}" required="true"
-                                   requiredMessage="Admin Password is required"/>
-                </p:panelGrid>
-
-                <p:commandButton value="Login as Admin"
-                                 action="#{adminSessionBean.login}"
-                                 process="@form"
-                                 update="globalMessages"
-                                 icon="pi pi-sign-in"
-                                 ajax="true" />
-                <!-- Extra links: Sign up & Forgot password -->
-                <p:separator />
-
-                <h:panelGroup layout="block" style="text-align:center;">
-                    <h:link value="Create an Account" outcome="/pages/register.xhtml"/>
-                    <br/>
-                    <h:link value="Forgot Password?" outcome="/pages/reset-password.xhtml"/>
-                </h:panelGroup>
-
-            </h:form>
-        </p:tab>
-
-    </p:tabView>
-            </div>
         </div>
     </ui:define>
-
 </ui:composition>

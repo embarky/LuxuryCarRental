@@ -1,194 +1,101 @@
-<ui:composition
+<ui:composition template="/WEB-INF/templates/admin.xhtml"
                 xmlns="http://www.w3.org/1999/xhtml"
-                xmlns:h="http://xmlns.jcp.org/jsf/html"
                 xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-                template="/WEB-INF/templates/admin.xhtml">
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
 
     <ui:param name="activePage" value="bookings"/>
-
     <ui:define name="title">Bookings</ui:define>
 
-    <ui:define name="head">
-    <script>
-        /* Toggle hidden detail row */
-        function toggleDetails(id) {
-            const row = document.getElementById(id);
-            row.style.display = row.style.display === "table-row" ? "none" : "table-row";
-        }
-    </script>
-    </ui:define>
-
     <ui:define name="content">
-
-    <div class="container mt-5">
-
-        <h2 class="mb-4 text-center">Booking List</h2>
-
-        <div class="card shadow">
-            <div class="card-body">
-
-                <table class="table table-striped table-hover align-middle">
-
-                    <thead class="table-dark">
-                    <tr>
-                        <th>ID</th>
-                        <th>Customer</th>
-                        <th>Car</th>
-                        <th>Status</th>
-                        <th>Payment</th>
-                        <th>Date Range</th>
-                        <th>Total</th>
-                        <th class="edit-col">Actions</th>
-                    </tr>
-                    </thead>
-
-                    <tbody>
-                    <ui:repeat value="#{bookingListBean.bookings}" var="b" varStatus="vs">
-
-                        <!-- Clickable row -->
-                        <tr onclick="toggleDetails('detail#{vs.index}')">
-                            <td>#{b.bookingId}</td>
-                            <td>#{b.customer.firstName} #{b.customer.lastName}</td>
-                            <td>#{b.car.carType.brand} #{b.car.carType.model}</td>
-                            <td>#{b.bookingStatus}</td>
-                            <td>#{b.paymentStatus}</td>
-                            <td>#{b.startDate} → #{b.endDate}</td>
-                            <td>CHF #{b.totalCost}</td>
-
-                            <!-- Fixed right-side buttons -->
-                            <td class="edit-col">
-                                <div class="btn-group" role="group">
-
-                                    <!-- Confirm button -->
-                                    <h:form>
-                                        <h:commandLink value="Confirm" styleClass="btn btn-success btn-sm"
-                                                       action="#{bookingListBean.confirmBooking(b.bookingId)}"
-                                                       onclick="return confirm('Are you sure you want to confirm this booking?');"/>
-                                    </h:form>
-
-                                    <!-- Complete button -->
-                                    <h:form>
-                                        <h:commandLink value="Complete" styleClass="btn btn-info btn-sm"
-                                                       action="#{bookingListBean.completeBooking(b.bookingId)}"
-                                                       onclick="return confirm('Are you sure you want to complete this booking?');"/>
-                                    </h:form>
-
-                                    <!-- Reject button -->
-                                    <h:form>
-                                        <h:commandLink value="Reject" styleClass="btn btn-warning btn-sm"
-                                                       action="#{bookingListBean.rejectBooking(b.bookingId, 'Customer request')}"
-                                                       onclick="return confirm('Are you sure you want to reject this booking?');"/>
-                                    </h:form>
-
-                                    <!-- Delete button -->
-                                    <h:form>
-                                        <h:commandLink value="Delete" styleClass="btn btn-danger btn-sm"
-                                                       action="#{bookingListBean.deleteBooking(b.bookingId)}"
-                                                       onclick="return confirm('Are you sure you want to delete this booking?');"/>
-                                    </h:form>
-
-                                </div>
-                            </td>
-                        </tr>
-
-                        <!-- Hidden detail row -->
-                        <tr id="detail#{vs.index}" class="details-row" style="display:none;">
-                            <td colspan="8" class="details-cell">
-
-                                <!-- Customer Info -->
-                                <div class="card mb-3">
-                                    <div class="card-header bg-primary text-white">
-                                        <strong>Customer Information</strong>
-                                    </div>
-                                    <div class="card-body">
-
-                                        <p><strong>Name:</strong>
-                                            #{b.customer.firstName} #{b.customer.lastName}
-                                        </p>
-
-                                        <p><strong>Email:</strong> #{b.customer.email}</p>
-                                        <p><strong>Phone:</strong> #{b.customer.phoneNumber}</p>
-
-                                        <p><strong>Age:</strong> #{b.customer.age}</p>
-
-                                        <p><strong>Verified Identity:</strong>
-                                            #{b.customer.verifiedIdentity ? 'Yes' : 'No'}
-                                        </p>
-
-                                        <p><strong>Billing Address:</strong> #{b.customer.billingAddress}</p>
-
-                                        <p><strong>Driving License Number:</strong> #{b.customer.drivingLicenseNumber}</p>
-                                        <p><strong>License Expiry:</strong> #{b.customer.drivingLicenseExpiryDate}</p>
-
-                                        <p><strong>Account Balance:</strong> CHF #{b.customer.balance}</p>
-
-                                        <p><strong>Customer Since:</strong> #{b.customer.creationDate}</p>
-                                    </div>
-                                </div>
-
-                                <!-- Car Info -->
-                                <div class="card">
-                                    <div class="card-header bg-success text-white">
-                                        <strong>Car Information</strong>
-                                    </div>
-                                    <div class="card-body">
-
-                                        <p><strong>Car:</strong>
-                                            #{b.car.carType.brand} #{b.car.carType.model}
-                                        </p>
-
-                                        <p><strong>VIN:</strong> #{b.car.vin}</p>
-                                        <p><strong>License Plate:</strong> #{b.car.licensePlate}</p>
-                                        <p><strong>Color:</strong> #{b.car.color}</p>
-
-                                        <p><strong>Category:</strong> #{b.car.carType.category}</p>
-                                        <p><strong>Seats:</strong> #{b.car.carType.seats}</p>
-                                        <p><strong>Transmission:</strong> #{b.car.carType.transmission}</p>
-                                        <p><strong>Drive Type:</strong> #{b.car.carType.driveType}</p>
-
-                                        <p><strong>Engine:</strong> #{b.car.carType.engine}</p>
-                                        <p><strong>Power:</strong> #{b.car.carType.power} HP</p>
-                                        <p><strong>Acceleration 0–100:</strong> #{b.car.carType.acceleration} sec</p>
-                                        <p><strong>Max Speed:</strong> #{b.car.carType.maxSpeed} km/h</p>
-
-                                        <p><strong>Daily Rental Price:</strong> CHF #{b.car.dailyRentalPrice}</p>
-                                        <p><strong>Deposit Amount:</strong> CHF #{b.car.depositAmount}</p>
-
-                                        <p><strong>Insurance Expiry:</strong> #{b.car.insuranceExpiryDate}</p>
-                                        <p><strong>Last Maintenance:</strong> #{b.car.lastMaintenanceDate}</p>
-                                        <p><strong>Registration Date:</strong> #{b.car.registrationDate}</p>
-
-                                        <!-- Car Features -->
-                                        <p><strong>Features:</strong></p>
-                                        <ul>
-                                            <ui:repeat value="#{b.car.carType.features}" var="f">
-                                                <li>#{f}</li>
-                                            </ui:repeat>
-                                        </ul>
-
-                                        <!-- Image -->
-                                        <div class="mt-3">
-                                            <img src="#{b.car.imageUrl}"
-                                                 alt="Car Image"
-                                                 class="img-fluid rounded"
-                                                 style="max-width: 250px;" />
-                                        </div>
-
-                                    </div>
-                                </div>
-
-                            </td>
-                        </tr>
-
-                    </ui:repeat>
-                    </tbody>
-
-                </table>
-
+        <div class="page-header">
+            <div>
+                <h1>Bookings</h1>
+                <p>Hand over cars, take them back, or reject a booking. Payment and cancellation are done by customers.</p>
             </div>
         </div>
 
-    </div>
-    </ui:define>
+        <h:form>
+            <div class="filters" style="grid-template-columns: 2fr 1fr auto;">
+                <div class="field">
+                    <label for="text">Search</label>
+                    <h:inputText id="text" value="#{bookingAdminBean.text}" pt:placeholder="Reference, customer, car or plate"/>
+                </div>
+                <div class="field">
+                    <label for="status">Status</label>
+                    <h:selectOneMenu id="status" value="#{bookingAdminBean.status}">
+                        <f:selectItem itemLabel="All statuses" itemValue="#{null}" noSelectionOption="true"/>
+                        <f:selectItems value="#{bookingAdminBean.statuses}" var="s" itemValue="#{s}" itemLabel="#{fmt.status(s)}"/>
+                    </h:selectOneMenu>
+                </div>
+                <h:commandButton value="Filter" action="#{bookingAdminBean.load}" styleClass="btn btn-dark"/>
+            </div>
 
+            <div class="card card-flush">
+                <h:panelGroup layout="block" styleClass="empty" rendered="#{empty bookingAdminBean.bookings}">
+                    <h3>No bookings</h3><p>Nothing matches these filters.</p>
+                </h:panelGroup>
+                <h:panelGroup layout="block" styleClass="table-wrap" rendered="#{not empty bookingAdminBean.bookings}">
+                    <table class="table">
+                        <thead>
+                        <tr><th>Ref.</th><th>Customer</th><th>Car</th><th>Dates</th><th>Status</th><th class="right">To pay</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                        <ui:repeat value="#{bookingAdminBean.bookings}" var="b">
+                            <tr>
+                                <td class="mono">#{b.reference}</td>
+                                <td>
+                                    <h:link outcome="/pages/admin/customer_detail.xhtml" value="#{b.customer.fullName}">
+                                        <f:param name="id" value="#{b.customer.id}"/>
+                                    </h:link>
+                                    <div class="cell-sub">#{b.customer.email}</div>
+                                </td>
+                                <td>
+                                    <div class="cell-title">#{b.car.displayName}</div>
+                                    <div class="cell-sub">#{b.car.licensePlate}</div>
+                                </td>
+                                <td class="nowrap">
+                                    #{fmt.date(b.startDate)} → #{fmt.date(b.endDate)}
+                                    <div class="cell-sub">#{b.days} day(s)</div>
+                                </td>
+                                <td>
+                                    <span class="#{fmt.statusClass(b.bookingStatus)}">#{fmt.status(b.bookingStatus)}</span>
+                                    <h:panelGroup rendered="#{not empty b.rejectionReason}" layout="block" styleClass="cell-sub">#{b.rejectionReason}</h:panelGroup>
+                                </td>
+                                <td class="right nowrap">
+                                    #{fmt.chf(b.amountDue)}
+                                    <div class="cell-sub">#{b.paymentStatus}</div>
+                                </td>
+                                <td class="actions">
+                                    <a class="btn btn-outline btn-sm" href="#{request.contextPath}/booking-pdf?id=#{b.bookingId}" target="_blank">PDF</a>
+                                    <h:commandButton value="Hand over" action="#{bookingAdminBean.pickUp(b.bookingId)}"
+                                                     rendered="#{bookingAdminBean.canPickUp(b)}" styleClass="btn btn-primary btn-sm"/>
+                                    <h:commandButton value="Car returned" action="#{bookingAdminBean.complete(b.bookingId)}"
+                                                     rendered="#{bookingAdminBean.canComplete(b)}" styleClass="btn btn-primary btn-sm"/>
+                                    <h:commandButton value="Reject" action="#{bookingAdminBean.startReject(b.bookingId)}"
+                                                     rendered="#{bookingAdminBean.canReject(b) and not bookingAdminBean.isRejecting(b)}"
+                                                     styleClass="btn btn-danger btn-sm"/>
+                                </td>
+                            </tr>
+                            <h:panelGroup rendered="#{bookingAdminBean.isRejecting(b)}">
+                                <tr>
+                                    <td colspan="7" style="background: var(--danger-soft);">
+                                        <div class="row">
+                                            <b>Reject #{b.reference}:</b>
+                                            <h:inputText value="#{bookingAdminBean.reason}" styleClass="input" style="flex: 1; min-width: 260px;"
+                                                         pt:placeholder="Reason shown to the customer, e.g. licence could not be verified"/>
+                                            <h:commandButton value="Reject and refund" action="#{bookingAdminBean.confirmReject}" styleClass="btn btn-danger btn-sm"/>
+                                            <h:commandButton value="Keep booking" action="#{bookingAdminBean.cancelReject}" styleClass="btn btn-outline btn-sm"/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </h:panelGroup>
+                        </ui:repeat>
+                        </tbody>
+                    </table>
+                </h:panelGroup>
+            </div>
+        </h:form>
+    </ui:define>
 </ui:composition>

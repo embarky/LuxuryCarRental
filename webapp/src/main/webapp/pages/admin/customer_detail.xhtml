@@ -1,0 +1,89 @@
+<ui:composition template="/WEB-INF/templates/admin.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core">
+
+    <ui:param name="activePage" value="customers"/>
+
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam name="id" value="#{customerAdminBean.id}"/>
+            <f:viewAction action="#{customerAdminBean.loadOne}"/>
+        </f:metadata>
+    </ui:define>
+
+    <ui:define name="title">#{customerAdminBean.customer.fullName}</ui:define>
+
+    <ui:define name="content">
+        <h:form rendered="#{customerAdminBean.customer ne null}">
+            <div class="page-header">
+                <div>
+                    <h:link value="← Customers" outcome="/pages/admin/customers.xhtml" styleClass="small"/>
+                    <h1>#{customerAdminBean.customer.fullName}</h1>
+                    <p>#{customerAdminBean.customer.email} · customer since #{fmt.dateTime(customerAdminBean.customer.creationDate)}</p>
+                </div>
+                <div class="row">
+                    <h:commandButton value="Verify identity" action="#{customerAdminBean.setVerified(customerAdminBean.customer, true)}"
+                                     rendered="#{not customerAdminBean.customer.verifiedIdentity}" styleClass="btn btn-primary"/>
+                    <h:commandButton value="Revoke verification" action="#{customerAdminBean.setVerified(customerAdminBean.customer, false)}"
+                                     rendered="#{customerAdminBean.customer.verifiedIdentity}" styleClass="btn btn-outline"/>
+                    <h:commandButton value="Delete" action="#{customerAdminBean.delete(customerAdminBean.customer)}"
+                                     rendered="#{empty customerAdminBean.bookings}" styleClass="btn btn-danger"
+                                     onclick="return confirm('Delete this customer?');"/>
+                </div>
+            </div>
+
+            <div class="grid-3" style="margin-bottom: 20px;">
+                <div class="card">
+                    <h2>Contact</h2>
+                    <dl class="kv" style="margin-top: 12px;">
+                        <dt>Phone</dt><dd>#{customerAdminBean.customer.phoneNumber}</dd>
+                        <dt>Address</dt><dd>#{empty customerAdminBean.customer.billingAddress ? '–' : customerAdminBean.customer.billingAddress}</dd>
+                        <dt>Age</dt><dd>#{customerAdminBean.customer.age}</dd>
+                    </dl>
+                </div>
+                <div class="card">
+                    <h2>Driving licence</h2>
+                    <dl class="kv" style="margin-top: 12px;">
+                        <dt>Number</dt><dd class="mono">#{customerAdminBean.customer.drivingLicenseNumber}</dd>
+                        <dt>Valid until</dt><dd>#{fmt.date(customerAdminBean.customer.drivingLicenseExpiryDate)}</dd>
+                        <dt>Identity</dt>
+                        <dd>
+                            <h:outputText value="Verified" styleClass="badge badge-completed" rendered="#{customerAdminBean.customer.verifiedIdentity}"/>
+                            <h:outputText value="To verify" styleClass="badge badge-pending" rendered="#{not customerAdminBean.customer.verifiedIdentity}"/>
+                        </dd>
+                    </dl>
+                </div>
+                <div class="card">
+                    <h2>Balance</h2>
+                    <div class="stat-value" style="margin-top: 8px;">#{fmt.chf(customerAdminBean.customer.balance)}</div>
+                    <p class="muted small">#{customerAdminBean.bookings.size()} booking(s)</p>
+                </div>
+            </div>
+
+            <div class="card card-flush">
+                <div style="padding: 20px 24px 12px;"><h2>Bookings</h2></div>
+                <h:panelGroup layout="block" styleClass="empty" rendered="#{empty customerAdminBean.bookings}">
+                    <p>No bookings yet.</p>
+                </h:panelGroup>
+                <h:panelGroup layout="block" styleClass="table-wrap" rendered="#{not empty customerAdminBean.bookings}">
+                    <table class="table">
+                        <thead><tr><th>Ref.</th><th>Car</th><th>Dates</th><th>Status</th><th class="right">Rental</th></tr></thead>
+                        <tbody>
+                        <ui:repeat value="#{customerAdminBean.bookings}" var="b">
+                            <tr>
+                                <td class="mono">#{b.reference}</td>
+                                <td>#{b.car.displayName} <span class="cell-sub">#{b.car.licensePlate}</span></td>
+                                <td class="nowrap">#{fmt.date(b.startDate)} → #{fmt.date(b.endDate)}</td>
+                                <td><span class="#{fmt.statusClass(b.bookingStatus)}">#{fmt.status(b.bookingStatus)}</span></td>
+                                <td class="right">#{fmt.chf(b.totalCost)}</td>
+                            </tr>
+                        </ui:repeat>
+                        </tbody>
+                    </table>
+                </h:panelGroup>
+            </div>
+        </h:form>
+    </ui:define>
+</ui:composition>

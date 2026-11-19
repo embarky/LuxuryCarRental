@@ -1,135 +1,93 @@
-<ui:composition
+<ui:composition template="/WEB-INF/templates/admin.xhtml"
                 xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
                 xmlns:h="http://xmlns.jcp.org/jsf/html"
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
-                xmlns:p="http://primefaces.org/ui"
-                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-                template="/WEB-INF/templates/admin.xhtml">
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
 
     <ui:param name="activePage" value="car"/>
 
-    <ui:define name="title">Car Form</ui:define>
-
-    <ui:define name="content">
-    <p:messages id="globalMessages" autoUpdate="true" closable="true" showDetail="true" />
-
-    <div class="container mt-5">
-
-        <h2 class="mb-4 text-center">
-            #{carFormBean.editing ? 'Edit Car' : 'Add New Car'}
-        </h2>
-
-        <h:form id="carForm">
-
-            <h:messages styleClass="text-danger mb-3" globalOnly="true"/>
-
-            <div class="card shadow p-4">
-
-                <!-- Car type drop-down -->
-                <div class="mb-3">
-                    <label for="carType" class="form-label">Car Type *</label>
-                    <h:selectOneMenu id="carType" value="#{carFormBean.carTypeId}" required="true"
-                                     styleClass="form-select"
-                                     converter="#{carFormBean.uuidConverter}">
-                        <f:selectItem itemLabel="-- Select --" itemValue="#{null}" />
-                        <f:selectItems value="#{carFormBean.carTypes}" var="ct"
-                                       itemLabel="#{ct.brand} #{ct.model}" itemValue="#{ct.id}" />
-                    </h:selectOneMenu>
-                </div>
-
-                <!-- Color & License -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="color" class="form-label">Color *</label>
-                        <h:inputText id="color" value="#{carFormBean.car.color}" required="true"
-                                     styleClass="form-control"/>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="licensePlate" class="form-label">License Plate *</label>
-                        <h:inputText id="licensePlate" value="#{carFormBean.car.licensePlate}" required="true"
-                                     styleClass="form-control"/>
-                    </div>
-                </div>
-
-                <!-- Price & Deposit -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="dailyRentalPrice" class="form-label">Daily Rental Price *</label>
-                        <h:inputText id="dailyRentalPrice" value="#{carFormBean.car.dailyRentalPrice}" required="true"
-                                     styleClass="form-control">
-                            <f:convertNumber/>
-                        </h:inputText>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="depositAmount" class="form-label">Deposit Amount *</label>
-                        <h:inputText id="depositAmount" value="#{carFormBean.car.depositAmount}" required="true"
-                                     styleClass="form-control">
-                            <f:convertNumber/>
-                        </h:inputText>
-                    </div>
-                </div>
-
-                <!-- Dates -->
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label for="insuranceExpiryDate" class="form-label">Insurance Expiry *</label>
-                        <h:inputText id="insuranceExpiryDate" value="#{carFormBean.car.insuranceExpiryDate}"
-                                     required="true" styleClass="form-control" type="date"
-                                     converter="#{carFormBean.localDateConverter}"/>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="lastMaintenanceDate" class="form-label">Last Maintenance *</label>
-                        <h:inputText id="lastMaintenanceDate" value="#{carFormBean.car.lastMaintenanceDate}"
-                                     required="true" styleClass="form-control" type="date"
-                                     converter="#{carFormBean.localDateConverter}"/>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="registrationDate" class="form-label">Registration Date *</label>
-                        <h:inputText id="registrationDate" value="#{carFormBean.car.registrationDate}"
-                                     required="true" styleClass="form-control" type="date"
-                                     converter="#{carFormBean.localDateConverter}"/>
-                    </div>
-                </div>
-
-                <!-- VIN & Image URL -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="vin" class="form-label">VIN *</label>
-                        <h:inputText id="vin" value="#{carFormBean.car.vin}" required="true"
-                                     styleClass="form-control"/>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="imageUrl" class="form-label">Image URL</label>
-                        <h:inputText id="imageUrl" value="#{carFormBean.car.imageUrl}" styleClass="form-control"/>
-                    </div>
-                </div>
-
-                <!-- Status -->
-                <div class="mb-3">
-                    <label for="status" class="form-label">Status *</label>
-                    <h:selectOneMenu id="status" value="#{carFormBean.car.status}" required="true"
-                                     styleClass="form-select">
-                        <f:selectItem itemLabel="-- Select --" itemValue="#{null}"/>
-                        <f:selectItem itemLabel="Available" itemValue="AVAILABLE"/>
-                        <f:selectItem itemLabel="Unavailable" itemValue="UNAVAILABLE"/>
-                    </h:selectOneMenu>
-                </div>
-
-                <!-- Buttons -->
-                <div class="d-flex justify-content-end gap-2 mt-4">
-                    <h:commandButton value="Save Car" action="#{carFormBean.save}"
-                                     styleClass="btn btn-success"/>
-                    <h:commandButton value="Cancel"
-                                     action="/pages/admin/car.xhtml?faces-redirect=true"
-                                     styleClass="btn btn-secondary"
-                                     process="@this"
-                                     immediate="true"/>
-                </div>
-
-            </div>
-        </h:form>
-
-    </div>
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam name="id" value="#{carFormBean.id}"/>
+            <f:viewAction action="#{carFormBean.load}"/>
+        </f:metadata>
     </ui:define>
 
+    <ui:define name="title">#{carFormBean.editing ? 'Edit car' : 'Add a car'}</ui:define>
+
+    <ui:define name="content">
+        <div class="page-header">
+            <div>
+                <h:link value="← Cars" outcome="/pages/admin/car.xhtml" styleClass="small"/>
+                <h1>#{carFormBean.editing ? 'Edit car' : 'Add a car'}</h1>
+            </div>
+        </div>
+
+        <h:form styleClass="card" rendered="#{carFormBean.car ne null}" style="max-width: 860px;">
+            <div class="form-grid">
+                <div class="field">
+                    <label for="type">Car type</label>
+                    <h:selectOneMenu id="type" value="#{carFormBean.carTypeId}">
+                        <f:selectItem itemLabel="Choose a car type" itemValue="#{null}" noSelectionOption="true"/>
+                        <f:selectItems value="#{carFormBean.carTypes}" var="t" itemValue="#{t.id}"
+                                       itemLabel="#{t.brand} #{t.model} (#{t.category})"/>
+                    </h:selectOneMenu>
+                    <span class="hint"><h:link value="Add a car type" outcome="/pages/admin/car_type_form.xhtml"/> if it is missing.</span>
+                </div>
+                <div class="field">
+                    <label for="plate">Licence plate</label>
+                    <h:inputText id="plate" value="#{carFormBean.car.licensePlate}" pt:placeholder="VD 123 456"/>
+                </div>
+                <div class="field">
+                    <label for="price">Price per day (CHF)</label>
+                    <h:inputText id="price" value="#{carFormBean.car.dailyRentalPrice}" pt:type="number" pt:min="1" pt:step="0.01"/>
+                </div>
+                <div class="field">
+                    <label for="deposit">Deposit (CHF)</label>
+                    <h:inputText id="deposit" value="#{carFormBean.car.depositAmount}" pt:type="number" pt:min="1" pt:step="0.01"/>
+                </div>
+                <div class="field">
+                    <label for="color">Colour</label>
+                    <h:inputText id="color" value="#{carFormBean.car.color}"/>
+                </div>
+                <div class="field">
+                    <label for="status">Status</label>
+                    <h:selectOneMenu id="status" value="#{carFormBean.car.status}">
+                        <f:selectItems value="#{carFormBean.statuses}" var="s" itemValue="#{s}" itemLabel="#{fmt.carStatus(s)}"/>
+                    </h:selectOneMenu>
+                </div>
+                <div class="field">
+                    <label for="vin">VIN</label>
+                    <h:inputText id="vin" value="#{carFormBean.car.vin}"/>
+                </div>
+                <div class="field">
+                    <label for="registration">First registration</label>
+                    <h:inputText id="registration" value="#{carFormBean.car.registrationDate}" pt:type="date">
+                        <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                    </h:inputText>
+                </div>
+                <div class="field">
+                    <label for="maintenance">Last maintenance</label>
+                    <h:inputText id="maintenance" value="#{carFormBean.car.lastMaintenanceDate}" pt:type="date">
+                        <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                    </h:inputText>
+                </div>
+                <div class="field">
+                    <label for="insurance">Insurance valid until</label>
+                    <h:inputText id="insurance" value="#{carFormBean.car.insuranceExpiryDate}" pt:type="date">
+                        <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                    </h:inputText>
+                </div>
+                <div class="field full">
+                    <label for="image">Image URL</label>
+                    <h:inputText id="image" value="#{carFormBean.car.imageUrl}" pt:type="url" pt:placeholder="https://..."/>
+                </div>
+            </div>
+            <div class="form-actions">
+                <h:commandButton value="Save" action="#{carFormBean.save}" styleClass="btn btn-primary"/>
+                <h:link value="Cancel" outcome="/pages/admin/car.xhtml" styleClass="btn btn-outline"/>
+            </div>
+        </h:form>
+    </ui:define>
 </ui:composition>

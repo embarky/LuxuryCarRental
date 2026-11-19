@@ -1,106 +1,87 @@
-<ui:composition
+<ui:composition template="/resources/templates/master_template.xhtml"
                 xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
                 xmlns:h="http://xmlns.jcp.org/jsf/html"
                 xmlns:f="http://xmlns.jcp.org/jsf/core"
-                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
-                xmlns:p="http://primefaces.org/ui"
-                template="/resources/templates/master_template.xhtml">
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
 
-    <ui:define name="title">Create an Account · Luxury Car Rental</ui:define>
+    <ui:define name="title">Create an account</ui:define>
 
     <ui:define name="content">
-        <div class="page-shell">
-            <div class="page-card">
-    <h:form id="registrationForm">
+        <div class="page page-medium">
+            <h:form styleClass="card">
+                <h1 class="auth-card" style="max-width: none; font-family: var(--font-display); font-weight: 400; font-size: 30px;">Create your account</h1>
+                <p class="muted" style="margin-bottom: 24px;">Your driving licence is checked once by our team before your first payment.</p>
 
-        <!-- Global Messages -->
-        <p:messages id="globalMessages"
-                    autoUpdate="true"
-                    closable="true"
-                    showDetail="true"/>
+                <h2 class="small muted" style="text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">About you</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="firstName">First name</label>
+                        <h:inputText id="firstName" value="#{registerBean.form.firstName}" pt:autocomplete="given-name" pt:required="required"/>
+                    </div>
+                    <div class="field">
+                        <label for="lastName">Last name</label>
+                        <h:inputText id="lastName" value="#{registerBean.form.lastName}" pt:autocomplete="family-name" pt:required="required"/>
+                    </div>
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <h:inputText id="email" value="#{registerBean.form.email}" pt:type="email" pt:autocomplete="email" pt:required="required"/>
+                    </div>
+                    <div class="field">
+                        <label for="phone">Phone</label>
+                        <h:inputText id="phone" value="#{registerBean.form.phoneNumber}" pt:type="tel"
+                                     pt:placeholder="+41 79 123 45 67" pt:autocomplete="tel" pt:required="required"/>
+                    </div>
+                    <div class="field">
+                        <label for="dob">Date of birth</label>
+                        <h:inputText id="dob" value="#{registerBean.form.dateOfBirth}" pt:type="date" pt:required="required">
+                            <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                        </h:inputText>
+                        <span class="hint">You must be at least 18 years old.</span>
+                    </div>
+                    <div class="field">
+                        <label for="address">Billing address <span class="muted">(optional)</span></label>
+                        <h:inputText id="address" value="#{registerBean.form.billingAddress}" pt:autocomplete="street-address"/>
+                    </div>
+                </div>
 
-        <h2>User Registration</h2>
+                <h2 class="small muted" style="text-transform: uppercase; letter-spacing: 1px; margin: 26px 0 12px;">Driving licence</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="licence">Licence number</label>
+                        <h:inputText id="licence" value="#{registerBean.form.drivingLicenseNumber}" pt:required="required"/>
+                    </div>
+                    <div class="field">
+                        <label for="expiry">Valid until</label>
+                        <h:inputText id="expiry" value="#{registerBean.form.drivingLicenseExpiryDate}" pt:type="date"
+                                     pt:min="#{fmt.tomorrow()}" pt:required="required">
+                            <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                        </h:inputText>
+                    </div>
+                </div>
 
-        <p:tabView dynamic="true" cache="false">
+                <h2 class="small muted" style="text-transform: uppercase; letter-spacing: 1px; margin: 26px 0 12px;">Password</h2>
+                <div class="form-grid">
+                    <div class="field">
+                        <label for="password">Password</label>
+                        <h:inputSecret id="password" value="#{registerBean.form.password}" pt:autocomplete="new-password"
+                                       pt:required="required" pt:minlength="8"/>
+                        <span class="hint">At least 8 characters, with letters and digits.</span>
+                    </div>
+                    <div class="field">
+                        <label for="confirm">Repeat the password</label>
+                        <h:inputSecret id="confirm" value="#{registerBean.confirmPassword}" pt:autocomplete="new-password"
+                                       pt:required="required"/>
+                    </div>
+                </div>
 
-            <!-- Customer Registration -->
-            <p:tab title="Customer Registration">
-                <p:panelGrid columns="2" cellpadding="5">
-                    <h:outputLabel for="firstName" value="First Name:"/>
-                    <h:inputText id="firstName" value="#{registerBean.firstName}" required="true"/>
-
-                    <h:outputLabel for="lastName" value="Last Name:"/>
-                    <h:inputText id="lastName" value="#{registerBean.lastName}" required="true"/>
-
-                    <h:outputLabel for="password" value="Password:"/>
-                    <h:inputSecret id="password" value="#{registerBean.password}" required="true"/>
-
-                    <h:outputLabel for="email" value="Email:"/>
-                    <h:inputText id="email" value="#{registerBean.email}" required="true"/>
-
-                    <h:outputLabel for="phoneNumber" value="Phone Number:"/>
-                    <h:inputText id="phoneNumber" value="#{registerBean.phoneNumber}"/>
-
-                    <h:outputLabel for="drivingLicenseNumber" value="Driving License No:"/>
-                    <h:inputText id="drivingLicenseNumber" value="#{registerBean.drivingLicenseNumber}"/>
-
-                    <h:outputLabel for="drivingLicenseExpiryDate" value="License Expiry:"/>
-                    <p:datePicker id="drivingLicenseExpiryDate"
-                                  value="#{registerBean.drivingLicenseExpiryDate}"
-                                  pattern="yyyy-MM-dd"
-                                  showIcon="true"
-                                  required="true"/>
-
-                    <h:outputLabel for="age" value="Age:"/>
-                    <h:inputText id="age" value="#{registerBean.age}"/>
-
-                    <h:outputLabel for="verifiedIdentity" value="Verified Identity:"/>
-                    <h:selectBooleanCheckbox id="verifiedIdentity" value="#{registerBean.verifiedIdentity}"/>
-
-                    <h:outputLabel for="billingAddress" value="Billing Address:"/>
-                    <h:inputText id="billingAddress" value="#{registerBean.billingAddress}"/>
-
-                    <h:outputLabel for="balance" value="Balance:"/>
-                    <h:inputText id="balance" value="#{registerBean.balance}"/>
-                </p:panelGrid>
-
-                <p:commandButton value="Register Customer"
-                                 action="#{registerBean.registerCustomer}"
-                                 update="registrationForm:globalMessages"
-                                 process="@this firstName lastName password email phoneNumber drivingLicenseNumber drivingLicenseExpiryDate age verifiedIdentity billingAddress balance"
-                                 icon="pi pi-user-plus"
-                                 ajax="true"/>
-            </p:tab>
-
-            <!-- Admin Registration -->
-            <p:tab title="Admin Registration">
-                <p:panelGrid columns="2" cellpadding="5">
-                    <h:outputLabel for="adminUsername" value="Username:"/>
-                    <h:inputText id="adminUsername" value="#{registerBean.adminUsername}" required="true"/>
-
-                    <h:outputLabel for="adminPassword" value="Password:"/>
-                    <h:inputSecret id="adminPassword" value="#{registerBean.adminPassword}" required="true"/>
-
-                    <h:outputLabel for="adminName" value="Name:"/>
-                    <h:inputText id="adminName" value="#{registerBean.adminName}" required="true"/>
-
-                    <h:outputLabel for="adminEmail" value="Email:"/>
-                    <h:inputText id="adminEmail" value="#{registerBean.adminEmail}" required="true"/>
-                </p:panelGrid>
-
-                <p:commandButton value="Register Admin"
-                                 action="#{registerBean.registerAdmin}"
-                                 update="registrationForm:globalMessages"
-                                 process="@this adminUsername adminPassword adminName adminEmail"
-                                 icon="pi pi-user-plus"
-                                 ajax="true"/>
-            </p:tab>
-
-        </p:tabView>
-
-    </h:form>
-            </div>
+                <div class="form-actions">
+                    <h:commandButton value="Create my account" action="#{registerBean.register}" styleClass="btn btn-primary"/>
+                </div>
+                <p class="muted small" style="margin-top: 14px;">
+                    Already have an account? <h:link value="Log in" outcome="/pages/login.xhtml"/>
+                </p>
+            </h:form>
         </div>
     </ui:define>
-
 </ui:composition>

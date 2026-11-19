@@ -1,0 +1,76 @@
+<ui:composition template="/WEB-INF/templates/admin.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
+
+    <ui:param name="activePage" value="admins"/>
+    <ui:define name="title">Administrators</ui:define>
+
+    <ui:define name="content">
+        <div class="page-header">
+            <div>
+                <h1>Administrators</h1>
+                <p>Administrator accounts are created here only – there is no public sign-up for staff.</p>
+            </div>
+        </div>
+
+        <div class="layout-aside">
+            <h:form styleClass="card card-flush">
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead><tr><th>Name</th><th>Username</th><th>Since</th><th></th></tr></thead>
+                        <tbody>
+                        <ui:repeat value="#{adminAccountsBean.admins}" var="a">
+                            <tr>
+                                <td>
+                                    <div class="cell-title">#{a.name} <h:outputText value="(you)" styleClass="muted" rendered="#{adminAccountsBean.isMe(a)}"/></div>
+                                    <div class="cell-sub">#{a.email}</div>
+                                </td>
+                                <td class="mono">#{a.username}</td>
+                                <td>#{fmt.dateTime(a.createdAt)}</td>
+                                <td class="actions">
+                                    <h:commandButton value="Delete" action="#{adminAccountsBean.delete(a)}" rendered="#{not adminAccountsBean.isMe(a)}"
+                                                     styleClass="btn btn-danger btn-sm" onclick="return confirm('Delete #{a.username}?');"/>
+                                </td>
+                            </tr>
+                        </ui:repeat>
+                        </tbody>
+                    </table>
+                </div>
+            </h:form>
+
+            <div class="stack">
+                <h:form styleClass="card">
+                    <h2>New administrator</h2>
+                    <p class="card-lead">They receive a welcome email.</p>
+                    <div class="stack">
+                        <div class="field"><label for="name">Name</label><h:inputText id="name" value="#{adminAccountsBean.form.name}"/></div>
+                        <div class="field"><label for="username">Username</label><h:inputText id="username" value="#{adminAccountsBean.form.username}"/></div>
+                        <div class="field"><label for="email">Email</label><h:inputText id="email" value="#{adminAccountsBean.form.email}" pt:type="email"/></div>
+                        <div class="field">
+                            <label for="password">Password</label>
+                            <h:inputSecret id="password" value="#{adminAccountsBean.form.password}" pt:autocomplete="new-password"/>
+                            <span class="hint">At least 8 characters, with letters and digits.</span>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <h:commandButton value="Create" action="#{adminAccountsBean.create}" styleClass="btn btn-primary"/>
+                    </div>
+                </h:form>
+
+                <h:form styleClass="card">
+                    <h2>My password</h2>
+                    <div class="stack" style="margin-top: 12px;">
+                        <div class="field"><label for="current">Current password</label><h:inputSecret id="current" value="#{adminAccountsBean.password.currentPassword}"/></div>
+                        <div class="field"><label for="new">New password</label><h:inputSecret id="new" value="#{adminAccountsBean.password.newPassword}"/></div>
+                        <div class="field"><label for="confirm">Repeat the new password</label><h:inputSecret id="confirm" value="#{adminAccountsBean.confirmPassword}"/></div>
+                    </div>
+                    <div class="form-actions">
+                        <h:commandButton value="Change password" action="#{adminAccountsBean.changePassword}" styleClass="btn btn-outline"/>
+                    </div>
+                </h:form>
+            </div>
+        </div>
+    </ui:define>
+</ui:composition>

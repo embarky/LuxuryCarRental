@@ -4,54 +4,29 @@
         xmlns:cc="http://xmlns.jcp.org/jsf/composite"
         xmlns:h="http://xmlns.jcp.org/jsf/html">
 
-    <!-- Component API -->
+    <!-- A car in the catalogue. "query" is the query string of the details link. -->
     <cc:interface>
-        <cc:attribute name="model" required="true" />
-        <cc:attribute name="engine" required="true" />
-        <cc:attribute name="seats" required="true" />
-        <cc:attribute name="price" required="true" />
-        <cc:attribute name="badge" />
-        <cc:attribute name="carId" required="true" />
-        <cc:attribute name="imageUrl" required="true" />
+        <cc:attribute name="car" required="true"/>
+        <cc:attribute name="query" required="true"/>
     </cc:interface>
 
-    <!-- Implementation -->
     <cc:implementation>
-
-        <div class="car-card">
-
-            <div class="car-image"
-                 style="background-image: url('#{cc.attrs.imageUrl}');
-                        background-size: cover;
-                        background-position:center;
-                        height: 240px;">
-                <ui:fragment rendered="#{cc.attrs.badge}">
-                    <div class="car-badge">#{cc.attrs.badge}</div>
-                </ui:fragment>
-            </div>
-
-            <div class="car-info">
-                <h3>#{cc.attrs.model}</h3>
-
-                <div class="car-specs">
-                    <span>⚡ #{cc.attrs.engine}</span>
-                    <span>🪑 #{cc.attrs.seats} Seats</span>
-                    <span>⚙️ Auto</span>
+        <a class="car-card" href="#{request.contextPath}/pages/cars_details.xhtml?#{cc.attrs.query}">
+            <div class="car-card-image" style="background-image: url('#{cc.attrs.car.imageUrl}');"></div>
+            <div class="car-card-body">
+                <span class="car-card-category">#{cc.attrs.car.carType.category}</span>
+                <h3>#{cc.attrs.car.carType.brand} #{cc.attrs.car.carType.model}</h3>
+                <div class="car-card-specs">
+                    <span>#{cc.attrs.car.carType.power} hp</span>
+                    <span>#{cc.attrs.car.carType.seats} seats</span>
+                    <span>#{cc.attrs.car.carType.transmission}</span>
+                    <span>#{cc.attrs.car.color}</span>
                 </div>
-
-                <div class="car-price">
-                    <div>
-                        <div class="price">CHF#{cc.attrs.price}</div>
-                        <div class="price-label">Per Day</div>
-                    </div>
-
-                    <h:outputLink value="#{request.contextPath}/pages/cars_details.xhtml?carId=#{cc.attrs.carId}" styleClass="book-btn">
-                        Book
-                    </h:outputLink>
+                <div class="car-card-footer">
+                    <span class="car-card-price">#{fmt.chf(cc.attrs.car.dailyRentalPrice)} <small>/ day</small></span>
+                    <span class="btn btn-outline btn-sm">View</span>
                 </div>
             </div>
-        </div>
-
+        </a>
     </cc:implementation>
-
 </ui:composition>

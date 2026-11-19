@@ -1,0 +1,44 @@
+<ui:composition template="/resources/templates/master_template.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
+
+    <ui:define name="title">Administrator login</ui:define>
+
+    <ui:define name="content">
+        <div class="page page-narrow">
+            <h:form styleClass="card auth-card">
+                <span class="badge badge-gold">Staff only</span>
+                <h1 style="margin-top: 10px;">Administration</h1>
+                <p class="muted" style="margin-bottom: 22px;">Manage the fleet, bookings and customers.</p>
+
+                <div class="stack">
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <h:inputText id="email" value="#{adminSessionBean.email}" required="true"
+                                     requiredMessage="Please enter your email."
+                                     pt:type="email" pt:autocomplete="email" pt:autofocus="autofocus"/>
+                    </div>
+                    <div class="field">
+                        <div class="spread">
+                            <label for="password">Password</label>
+                            <h:link value="Forgot password?" outcome="/pages/reset-password.xhtml" styleClass="small">
+                                <f:param name="role" value="admin" xmlns:f="http://xmlns.jcp.org/jsf/core"/>
+                            </h:link>
+                        </div>
+                        <h:inputSecret id="password" value="#{adminSessionBean.password}" required="true"
+                                       requiredMessage="Please enter your password." pt:autocomplete="current-password"/>
+                    </div>
+                </div>
+
+                <h:messages globalOnly="false" styleClass="notice notice-error"
+                            style="list-style: none; margin-top: 16px;" rendered="#{facesContext.validationFailed}"/>
+
+                <div class="form-actions">
+                    <h:commandButton value="Log in" action="#{adminSessionBean.login}" styleClass="btn btn-dark btn-block"/>
+                </div>
+            </h:form>
+        </div>
+    </ui:define>
+</ui:composition>

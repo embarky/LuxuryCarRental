@@ -1,0 +1,122 @@
+<ui:composition template="/resources/templates/master_template.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough">
+
+    <ui:define name="title">My account</ui:define>
+
+    <ui:define name="content">
+        <div class="page">
+            <div class="page-header">
+                <div>
+                    <h1>My account</h1>
+                    <p>#{accountBean.customer.fullName} · #{accountBean.customer.email}</p>
+                </div>
+                <h:link value="My bookings" outcome="/pages/orders.xhtml" styleClass="btn btn-outline"/>
+            </div>
+
+            <h:panelGroup layout="block" styleClass="notice notice-warn" style="margin-bottom: 20px;"
+                          rendered="#{not accountBean.customer.verifiedIdentity}">
+                <b>Identity check pending.</b> Our team verifies your driving licence before your first payment.
+                You can already reserve cars; you will be able to pay once you are verified.
+            </h:panelGroup>
+
+            <div class="layout-aside">
+                <div class="stack">
+                    <!-- Profile -->
+                    <h:form styleClass="card">
+                        <h2>Personal details</h2>
+                        <p class="card-lead">Changing the licence number requires a new identity check.</p>
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="firstName">First name</label>
+                                <h:inputText id="firstName" value="#{accountBean.profile.firstName}"/>
+                            </div>
+                            <div class="field">
+                                <label for="lastName">Last name</label>
+                                <h:inputText id="lastName" value="#{accountBean.profile.lastName}"/>
+                            </div>
+                            <div class="field">
+                                <label for="phone">Phone</label>
+                                <h:inputText id="phone" value="#{accountBean.profile.phoneNumber}" pt:type="tel"/>
+                            </div>
+                            <div class="field">
+                                <label for="address">Billing address</label>
+                                <h:inputText id="address" value="#{accountBean.profile.billingAddress}"/>
+                            </div>
+                            <div class="field">
+                                <label for="licence">Driving licence number</label>
+                                <h:inputText id="licence" value="#{accountBean.profile.drivingLicenseNumber}"/>
+                            </div>
+                            <div class="field">
+                                <label for="expiry">Licence valid until</label>
+                                <h:inputText id="expiry" value="#{accountBean.profile.drivingLicenseExpiryDate}" pt:type="date">
+                                    <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                                </h:inputText>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <h:commandButton value="Save details" action="#{accountBean.saveProfile}" styleClass="btn btn-dark"/>
+                        </div>
+                    </h:form>
+
+                    <!-- Password -->
+                    <h:form styleClass="card">
+                        <h2>Password</h2>
+                        <p class="card-lead">At least 8 characters, with letters and digits.</p>
+                        <div class="form-grid">
+                            <div class="field full">
+                                <label for="current">Current password</label>
+                                <h:inputSecret id="current" value="#{accountBean.password.currentPassword}" pt:autocomplete="current-password"/>
+                            </div>
+                            <div class="field">
+                                <label for="new">New password</label>
+                                <h:inputSecret id="new" value="#{accountBean.password.newPassword}" pt:autocomplete="new-password"/>
+                            </div>
+                            <div class="field">
+                                <label for="confirm">Repeat the new password</label>
+                                <h:inputSecret id="confirm" value="#{accountBean.confirmPassword}" pt:autocomplete="new-password"/>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <h:commandButton value="Change password" action="#{accountBean.changePassword}" styleClass="btn btn-outline"/>
+                        </div>
+                    </h:form>
+                </div>
+
+                <!-- Balance -->
+                <h:form styleClass="card sticky">
+                    <h2>Balance</h2>
+                    <div class="stat-value" style="margin: 6px 0 4px;">#{fmt.chf(accountBean.customer.balance)}</div>
+                    <p class="muted small" style="margin-bottom: 18px;">
+                        Used to pay rentals and deposits; refunds come back here.
+                        This is a demo: no real money is involved.
+                    </p>
+                    <div class="row" style="margin-bottom: 14px;">
+                        <h:commandButton value="+ 1'000" action="#{accountBean.quickTopUp(1000)}" styleClass="btn btn-outline btn-sm"/>
+                        <h:commandButton value="+ 5'000" action="#{accountBean.quickTopUp(5000)}" styleClass="btn btn-outline btn-sm"/>
+                        <h:commandButton value="+ 10'000" action="#{accountBean.quickTopUp(10000)}" styleClass="btn btn-outline btn-sm"/>
+                    </div>
+                    <div class="field">
+                        <label for="amount">Other amount (CHF)</label>
+                        <h:inputText id="amount" value="#{accountBean.topUpAmount}" pt:type="number" pt:min="1" pt:step="1"/>
+                    </div>
+                    <div class="form-actions">
+                        <h:commandButton value="Top up" action="#{accountBean.topUp}" styleClass="btn btn-primary btn-block"/>
+                    </div>
+                    <dl class="kv" style="margin-top: 22px;">
+                        <dt>Identity</dt>
+                        <dd>
+                            <h:outputText value="Verified" styleClass="badge badge-completed" rendered="#{accountBean.customer.verifiedIdentity}"/>
+                            <h:outputText value="Pending" styleClass="badge badge-pending" rendered="#{not accountBean.customer.verifiedIdentity}"/>
+                        </dd>
+                        <dt>Member since</dt>
+                        <dd>#{fmt.dateTime(accountBean.customer.creationDate)}</dd>
+                    </dl>
+                </h:form>
+            </div>
+        </div>
+    </ui:define>
+</ui:composition>

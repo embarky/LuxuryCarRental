@@ -2,95 +2,88 @@
                 xmlns="http://www.w3.org/1999/xhtml"
                 xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
                 xmlns:h="http://xmlns.jcp.org/jsf/html"
-                xmlns:ed="http://xmlns.jcp.org/jsf/composite/templates"> <ui:define name="content">
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:pt="http://xmlns.jcp.org/jsf/passthrough"
+                xmlns:ed="http://xmlns.jcp.org/jsf/composite/templates">
 
-    <section class="hero" id="home">
-        <div class="hero-content">
-            <h1 class="hero-title">Luxury Driving Within Reach</h1>
-            <p class="hero-subtitle">Experience World's Top Luxury Cars and Exceptional Driving Pleasure</p>
-            <div class="hero-buttons">
-                <h:button value="Book Now" outcome="/pages/cars.xhtml" styleClass="btn btn-primary" />
-                <button class="btn-secondary">Learn More</button>
-            </div>
-        </div>
-        <div id="video-bg">
-            <iframe
-                    src="https://www.youtube.com/embed/NmoUJ60RNZs?autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=NmoUJ60RNZs&amp;controls=0&amp;disablekb=1&amp;cc_load_policy=0"
-                    frameborder="0"
-                    allow="autoplay; encrypted-media; gyroscope; picture-in-picture"
-                    allowfullscreen="allowfullscreen">
-            </iframe>
-        </div>
-    </section>
+    <ui:define name="title">Premium car rental</ui:define>
 
-    <section class="features" id="features">
-        <h2 class="section-title">Why Choose <span>Us</span></h2>
-        <div class="features-grid">
-            <div class="feature-card">
-                <div class="feature-icon">👑</div>
-                <h3>Premier Fleet</h3>
-                <p>Featuring Rolls-Royce, Bentley, Ferrari, and other world-class luxury brands. Every vehicle is strictly selected and professionally maintained.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">🛡️</div>
-                <h3>Comprehensive Coverage</h3>
-                <p>Offering full-range insurance and 24-hour roadside assistance, ensuring your every journey is worry-free.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">⭐</div>
-                <h3>Concierge Service</h3>
-                <p>Dedicated one-on-one account managers, delivery to your door, and chauffeur services to meet your every distinguished need.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">💎</div>
-                <h3>Flexible Rental Terms</h3>
-                <p>Support hourly, daily, or long-term rentals. Flexible solutions to suit your various occasion needs.</p>
-            </div>
-        </div>
-    </section>
+    <ui:define name="content">
+        <section class="hero">
+            <div class="hero-content">
+                <p class="hero-eyebrow">Lausanne · Premium car rental</p>
+                <h1 class="hero-title">The car you have always wanted to drive, for a weekend.</h1>
+                <p class="hero-subtitle">Choose from our fleet of sports cars, SUVs and electric saloons.
+                    Book online, pay in one click, cancel free of charge up to 48 hours before pick-up.</p>
 
-    <section class="cars-section" id="cars">
-        <h2 class="section-title">Available <span>Cars</span></h2>
+                <h:form styleClass="hero-search">
+                    <div class="field">
+                        <label for="start">Pick-up</label>
+                        <h:inputText id="start" value="#{carsBean.start}" pt:type="date" pt:min="#{fmt.today()}">
+                            <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                        </h:inputText>
+                    </div>
+                    <div class="field">
+                        <label for="end">Return</label>
+                        <h:inputText id="end" value="#{carsBean.end}" pt:type="date" pt:min="#{fmt.tomorrow()}">
+                            <f:convertDateTime type="localDate" pattern="yyyy-MM-dd"/>
+                        </h:inputText>
+                    </div>
+                    <h:commandButton value="Find a car" action="#{carsBean.browse}" styleClass="btn btn-primary"/>
+                </h:form>
+            </div>
+        </section>
 
-        <h:form id="carListForm">
+        <section class="section">
+            <h2 class="section-title">Our fleet</h2>
+            <p class="section-lead">A selection of the cars you can book today. Every car is maintained by our
+                team and fully insured.</p>
 
             <div class="cars-grid">
-                <ui:repeat value="#{carsBean.carList}" var="car">
-
-                    <ed:car_card_component
-                            carId="#{car.id}"
-                            model="#{car.carType.brand} #{car.carType.model}"
-                            engine="#{car.carType.engine}"
-                            seats="#{car.carType.seats}"
-                            price="#{car.dailyRentalPrice}"
-                            imageUrl="#{car.imageUrl}">
-                    </ed:car_card_component>
-
+                <ui:repeat value="#{carsBean.featured}" var="car">
+                    <ed:car_card_component car="#{car}" query="#{carsBean.detailsQuery(car)}"/>
                 </ui:repeat>
             </div>
 
-        </h:form>
-    </section>
+            <div class="form-actions">
+                <h:link value="See all #{carsBean.carCount} cars" outcome="/pages/cars.xhtml" styleClass="btn btn-dark"/>
+            </div>
+        </section>
 
-    <section class="stats">
-        <div class="stats-grid">
-            <div class="stat-item">
-                <h3>500+</h3>
-                <p>Luxury Vehicles</p>
+        <section class="band">
+            <div class="section">
+                <div><strong>#{carsBean.carCount}</strong><span>cars available</span></div>
+                <div><strong>#{carsBean.categories.size()}</strong><span>categories</span></div>
+                <div><strong>24 h</strong><span>to pay after booking</span></div>
+                <div><strong>48 h</strong><span>free cancellation before pick-up</span></div>
             </div>
-            <div class="stat-item">
-                <h3>10K+</h3>
-                <p>Satisfied Clients</p>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">How it works</h2>
+            <p class="section-lead">From choosing a car to bringing it back.</p>
+            <div class="features-grid">
+                <div class="feature">
+                    <div class="feature-number">1</div>
+                    <h3>Create your account</h3>
+                    <p>Sign up with your driving licence. Our team checks it once, before your first payment.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-number">2</div>
+                    <h3>Choose dates and a car</h3>
+                    <p>Only cars free on your dates are shown. The price is calculated as you choose.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-number">3</div>
+                    <h3>Pay to confirm</h3>
+                    <p>Pay the rental and a refundable deposit from your balance within 24 hours.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-number">4</div>
+                    <h3>Drive, then return</h3>
+                    <p>Pick the car up on the first day. The deposit comes back when you return it.</p>
+                </div>
             </div>
-            <div class="stat-item">
-                <h3>50+</h3>
-                <p>Service Cities</p>
-            </div>
-            <div class="stat-item">
-                <h3>24/7</h3>
-                <p>Full-Time Service</p>
-            </div>
-        </div>
-    </section>
-</ui:define>
+        </section>
+    </ui:define>
 </ui:composition>

@@ -16,15 +16,16 @@ import java.io.IOException;
  * Protects pages that need a login.
  * <ul>
  *     <li>{@code /pages/admin/*} requires a logged-in administrator.</li>
- *     <li>{@code /pages/orders.xhtml} requires a logged-in customer.</li>
+ *     <li>{@code /pages/orders.xhtml} and {@code /pages/account.xhtml} require a logged-in customer.</li>
  * </ul>
  * Visitors without a login are sent to the login page; the page they asked for is
  * remembered so that {@link LoginRedirect} can bring them back after logging in.
  */
-@WebFilter(urlPatterns = {"/pages/admin/*", "/pages/orders.xhtml"})
+@WebFilter(urlPatterns = {"/pages/admin/*", "/pages/orders.xhtml", "/pages/account.xhtml"})
 public class AuthenticationFilter implements Filter {
 
-    private static final String LOGIN_PAGE = "/pages/login.xhtml";
+    private static final String CUSTOMER_LOGIN = "/pages/login.xhtml";
+    private static final String ADMIN_LOGIN = "/pages/staff-login.xhtml";
 
     @Inject
     private AdminSessionBean adminSession;
@@ -55,7 +56,7 @@ public class AuthenticationFilter implements Filter {
                     adminArea ? LoginRedirect.ADMIN_TARGET : LoginRedirect.CUSTOMER_TARGET, target);
         }
 
-        String loginUrl = request.getContextPath() + LOGIN_PAGE + (adminArea ? "?role=admin" : "");
+        String loginUrl = request.getContextPath() + (adminArea ? ADMIN_LOGIN : CUSTOMER_LOGIN);
 
         if ("partial/ajax".equals(request.getHeader("Faces-Request"))) {
             // An Ajax request after the session expired: tell the Faces client to redirect

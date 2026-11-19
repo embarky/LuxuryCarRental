@@ -1,29 +1,37 @@
+<!DOCTYPE html>
+<!--
+    Layout of the customer site: navigation, messages, page content, footer.
+    Pages define "title" and "content" (and optionally "metadata" and "head").
+-->
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
       xmlns:h="http://xmlns.jcp.org/jsf/html"
-      xmlns:my="http://xmlns.jcp.org/jsf/composite/components"
       lang="en">
+
+<ui:insert name="metadata"/>
+
 <h:head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title><ui:insert name="title">ELITE DRIVE - Luxury Car Rental</ui:insert></title>
-
-    <h:outputStylesheet library="css" name="base.css" />
-    <h:outputStylesheet library="css" name="components.css" />
-    <h:outputStylesheet library="css" name="sections.css" />
+    <title><ui:insert name="title">Luxury Car Rental</ui:insert> · Luxury Car Rental</title>
+    <h:outputStylesheet name="css/site.css"/>
+    <h:outputStylesheet name="css/app.css"/>
     <ui:insert name="head"/>
 </h:head>
+
 <h:body>
+    <ui:include src="nav_bar.xhtml"/>
 
+    <h:panelGroup id="toasts" layout="block">
+        <h:messages globalOnly="true" styleClass="toasts"
+                    infoClass="toast-info" warnClass="toast-warn" errorClass="toast-error"/>
+    </h:panelGroup>
 
-    <ui:include src="nav_bar.xhtml" />
-
-    <main role="main">
-        <ui:insert name="content" />
+    <main>
+        <ui:insert name="content"/>
     </main>
 
-    <ui:include src="page_footer.xhtml" />
-
+    <ui:include src="page_footer.xhtml"/>
 
     <h:outputScript name="js/script.js"/>
 </h:body>

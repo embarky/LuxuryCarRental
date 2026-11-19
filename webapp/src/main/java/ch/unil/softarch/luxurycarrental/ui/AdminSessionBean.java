@@ -1,67 +1,61 @@
 package ch.unil.softarch.luxurycarrental.ui;
 
-import ch.unil.softarch.luxurycarrental.client.AdminClient;
+import ch.unil.softarch.luxurycarrental.client.Api;
+import ch.unil.softarch.luxurycarrental.client.ApiException;
+import ch.unil.softarch.luxurycarrental.client.ApiTokens;
+import ch.unil.softarch.luxurycarrental.domain.dto.AdminSession;
 import ch.unil.softarch.luxurycarrental.domain.entities.Admin;
 import jakarta.enterprise.context.SessionScoped;
-import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
+import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import java.io.Serializable;
 
+/** The logged-in administrator of this browser session. */
 @Named("adminSessionBean")
 @SessionScoped
 public class AdminSessionBean implements Serializable {
 
-    private String email;       // Admin email
-    private String password;    // Admin password
-    private Admin admin;        // Currently logged-in admin
+    private static final long serialVersionUID = 1L;
 
-    private final AdminClient adminClient = new AdminClient();
+    @Inject
+    private Api api;
 
-    /**
-     * Admin login
-     * @return Redirects to the admin page on success, returns null and shows an error message on failure
-     */
+    private String email;
+    private String password;
+    private Admin admin;
+
     public String login() {
-        FacesContext context = FacesContext.getCurrentInstance();
         try {
-            admin = adminClient.loginAdmin(email, password);
-
-            if (admin != null) {
-                // Login successful: back to the page the admin asked for, or the dashboard
-                password = null;
-                return LoginRedirect.consume(LoginRedirect.ADMIN_TARGET,
-                        "/pages/admin/dashboard.xhtml?faces-redirect=true");
-            } else {
-                // Login failed
-                context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR,
-                        "Invalid email or password", null));
-                return null;
-            }
-        } catch (Exception e) {
-            // Catch any exception
-            context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR,
-                    "Login error: " + e.getMessage(), null));
+            AdminSession session = api.loginAdmin(email, password);
+            ApiTokens.store(ApiTokens.ADMIN, session.token);
+            admin = session.admin;
+            return LoginRedirect.consume(LoginRedirect.ADMIN_TARGET, "/pages/admin/dashboard.xhtml?faces-redirect=true");
+        } catch (ApiException e) {
+            Messages.error(e.getMessage());
             return null;
+        } finally {
+            password = null;
         }
     }
 
-    /**
-     * Admin logout
-     * @return Redirects to the login page
-     */
     public String logout() {
         admin = null;
-        FacesContext.getCurrentInstance().getExternalContext().invalidateSession();
-        return "/index.xhtml?faces-redirect=true";
+        ApiTokens.clear(ApiTokens.ADMIN);
+        Messages.info("You have been logged out.");
+        Messages.keep();
+        return "/pages/staff-login.xhtml?faces-redirect=true";
     }
 
     public boolean isLoggedIn() {
         return admin != null;
     }
 
-    // ===== Getters & Setters =====
+    public String getInitial() {
+        return admin == null || admin.getName() == null || admin.getName().isEmpty()
+                ? "A" : admin.getName().substring(0, 1).toUpperCase();
+    }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 

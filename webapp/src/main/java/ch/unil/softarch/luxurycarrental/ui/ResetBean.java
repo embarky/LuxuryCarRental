@@ -1,16 +1,17 @@
 package ch.unil.softarch.luxurycarrental.ui;
 
-import ch.unil.softarch.luxurycarrental.client.AdminClient;
-import ch.unil.softarch.luxurycarrental.client.CustomerClient;
-import jakarta.faces.application.FacesMessage;
-import jakarta.faces.context.FacesContext;
+import ch.unil.softarch.luxurycarrental.client.Api;
+import ch.unil.softarch.luxurycarrental.client.ApiException;
 import jakarta.faces.view.ViewScoped;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import java.io.Serializable;
-import java.util.Map;
 
+/**
+ * Password reset in two steps: ask for a code by email, then set a new password with it.
+ * {@code ?role=admin} resets an administrator account.
+ */
 @Named("resetBean")
 @ViewScoped
 public class ResetBean implements Serializable {
@@ -18,96 +19,60 @@ public class ResetBean implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Inject
-    private AdminClient adminClient;
+    private Api api;
 
-    @Inject
-    private CustomerClient customerClient;
+    private String role;
+    private String email;
+    private String code;
+    private String newPassword;
+    private String confirmPassword;
+    private boolean codeSent;
 
-    // ===== Admin Fields =====
-    private String adminEmail;
-    private String adminCode;
-    private String adminNewPassword;
-
-    // ===== Customer Fields =====
-    private String customerEmail;
-    private String customerCode;
-    private String customerNewPassword;
-
-    // ==========================
-    //       ADMIN ACTIONS
-    // ==========================
-    public void sendAdminResetCode() {
-        adminClient.sendAdminResetCode(adminEmail);
-
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO,
-                        "Verification code sent to " + adminEmail, null));
-    }
-
-    public void resetAdminPassword() {
+    public void sendCode() {
         try {
-            Map<String, String> result = adminClient.resetAdminPassword(adminEmail, adminCode, adminNewPassword);
-            addInfo(result.getOrDefault("message", "Admin password reset successfully."));
-        } catch (Exception e) {
-            addError("Admin password reset failed: " + e.getMessage());
-            e.printStackTrace();
+            Messages.info(api.sendResetCode(isAdmin(), email));
+            codeSent = true;
+        } catch (ApiException e) {
+            Messages.error(e);
         }
     }
 
-    // ==========================
-    //     CUSTOMER ACTIONS
-    // ==========================
-    public void sendCustomerResetCode() {
+    public String reset() {
+        if (newPassword == null || !newPassword.equals(confirmPassword)) {
+            Messages.error("The two passwords do not match.");
+            return null;
+        }
         try {
-            Map<String, String> result = customerClient.sendCustomerResetCode(customerEmail);
-            addInfo(result.getOrDefault("message", "Customer verification code sent successfully."));
-        } catch (Exception e) {
-            addError("Failed to send customer verification code: " + e.getMessage());
-            e.printStackTrace();
+            Messages.info(api.resetPassword(isAdmin(), email, code, newPassword));
+            Messages.keep();
+            return (isAdmin() ? "/pages/staff-login.xhtml" : "/pages/login.xhtml") + "?faces-redirect=true";
+        } catch (ApiException e) {
+            Messages.error(e);
+            return null;
+        } finally {
+            newPassword = null;
+            confirmPassword = null;
         }
     }
 
-    public void resetCustomerPassword() {
-        try {
-            Map<String, String> result = customerClient.resetCustomerPassword(customerEmail, customerCode, customerNewPassword);
-            addInfo(result.getOrDefault("message", "Customer password reset successfully."));
-        } catch (Exception e) {
-            addError("Customer password reset failed: " + e.getMessage());
-            e.printStackTrace();
-        }
+    public void changeEmail() {
+        codeSent = false;
+        code = null;
     }
 
-    // ==========================
-    //      HELPER METHODS
-    // ==========================
-    private void addInfo(String message) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_INFO, message, null));
+    public boolean isAdmin() {
+        return "admin".equals(role);
     }
 
-    private void addError(String message) {
-        FacesContext.getCurrentInstance().addMessage(null,
-                new FacesMessage(FacesMessage.SEVERITY_ERROR, message, null));
-    }
-
-    // ==========================
-    //       GETTERS / SETTERS
-    // ==========================
-    public String getAdminEmail() { return adminEmail; }
-    public void setAdminEmail(String adminEmail) { this.adminEmail = adminEmail; }
-
-    public String getAdminCode() { return adminCode; }
-    public void setAdminCode(String adminCode) { this.adminCode = adminCode; }
-
-    public String getAdminNewPassword() { return adminNewPassword; }
-    public void setAdminNewPassword(String adminNewPassword) { this.adminNewPassword = adminNewPassword; }
-
-    public String getCustomerEmail() { return customerEmail; }
-    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
-
-    public String getCustomerCode() { return customerCode; }
-    public void setCustomerCode(String customerCode) { this.customerCode = customerCode; }
-
-    public String getCustomerNewPassword() { return customerNewPassword; }
-    public void setCustomerNewPassword(String customerNewPassword) { this.customerNewPassword = customerNewPassword; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getNewPassword() { return newPassword; }
+    public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    public String getConfirmPassword() { return confirmPassword; }
+    public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
+    public boolean isCodeSent() { return codeSent; }
 }
