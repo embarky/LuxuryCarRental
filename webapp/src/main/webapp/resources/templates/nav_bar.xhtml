@@ -7,47 +7,41 @@
 
     <nav class="navbar" id="navbar">
         <div class="nav-container">
-            <div class="logo">Luxury Car Rental</div>
+            <h:link outcome="/index.xhtml" styleClass="logo">Luxury Car Rental</h:link>
 
             <ul class="nav-links">
                 <li><h:link value="Home" outcome="/index.xhtml"/></li>
-                <li><a href="#features">Services</a></li>
-                <li><h:link value="Car" outcome="/pages/cars.xhtml" /></li>
+                <li><h:link value="Services" outcome="/index.xhtml" fragment="features"/></li>
+                <li><h:link value="Cars" outcome="/pages/cars.xhtml"/></li>
 
-                <!-- If NOT logged in → show Login -->
-                <li>
-                    <h:panelGroup rendered="#{not customerSessionBean.loggedIn}">
-                        <h:link value="Login" outcome="/pages/login.xhtml"/>
-                    </h:panelGroup>
-                </li>
+                <!-- Administrator logged in: link back to the admin area -->
+                <h:panelGroup rendered="#{adminSessionBean.loggedIn}">
+                    <li><h:link value="Admin" outcome="/pages/admin/dashboard.xhtml"/></li>
+                </h:panelGroup>
 
-                <!-- If logged in → show username with dropdown menu -->
-                <li>
-                    <h:form style="display:inline;">
-                        <p:menuButton value="#{customerSessionBean.customer.firstName}"
-                                      icon="pi pi-user"
-                                      styleClass="btn btn-primary">
+                <!-- Not logged in as customer: login link -->
+                <h:panelGroup rendered="#{not customerSessionBean.loggedIn}">
+                    <li><h:link value="Login" outcome="/pages/login.xhtml"/></li>
+                </h:panelGroup>
 
-                            <!-- Orders page -->
-                            <p:menuitem value="Orders"
-                                        icon="pi pi-shopping-cart"
-                                        outcome="/pages/orders.xhtml"/>
-
-                            <!-- Logout action with PrimeFaces confirm -->
-                            <p:menuitem value="Logout"
-                                        icon="pi pi-sign-out"
-                                        action="#{customerSessionBean.logout}"
-                                        ajax="false"
-                                        styleClass="logout-button">
-                            </p:menuitem>
-
-                        </p:menuButton>
-                    </h:form>
-                </li>
-
-                <!-- Global confirm dialog -->
-                <p:confirmDialog global="true" showEffect="fade" hideEffect="fade"/>
-
+                <!-- Customer logged in: name with a menu -->
+                <h:panelGroup rendered="#{customerSessionBean.loggedIn}">
+                    <li>
+                        <h:form style="display:inline;">
+                            <p:menuButton value="#{customerSessionBean.customer.firstName}"
+                                          icon="pi pi-user"
+                                          styleClass="nav-user-menu">
+                                <p:menuitem value="My bookings"
+                                            icon="pi pi-shopping-cart"
+                                            outcome="/pages/orders.xhtml"/>
+                                <p:menuitem value="Logout"
+                                            icon="pi pi-sign-out"
+                                            action="#{customerSessionBean.logout}"
+                                            ajax="false"/>
+                            </p:menuButton>
+                        </h:form>
+                    </li>
+                </h:panelGroup>
             </ul>
         </div>
     </nav>

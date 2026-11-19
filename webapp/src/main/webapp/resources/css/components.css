@@ -159,3 +159,47 @@
     line-height: 1.6;
     font-size: 16px;
 }
+/* Logo is a link to the home page */
+a.logo {
+    text-decoration: none;
+}
+
+/* Customer menu in the navbar: keep the drop-down items readable */
+.nav-links .ui-menu a {
+    color: #1a1a1a;
+}
+
+.nav-links .ui-menu a::after {
+    display: none;
+}
+
+/* Light content area for pages without a full-screen hero (login, orders, ...) */
+.page-shell {
+    min-height: 100vh;
+    padding: 130px 20px 60px;
+    background: #f5f5f5;
+    color: #1a1a1a;
+}
+
+.page-shell .page-card {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 32px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.page-shell .page-card h2 {
+    margin-bottom: 20px;
+}
+
+/* Pages that also load Bootstrap (e.g. My bookings): Bootstrap has its own .navbar
+   class, so keep our navbar fixed at the top with a more specific selector */
+#navbar.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: block;
+}

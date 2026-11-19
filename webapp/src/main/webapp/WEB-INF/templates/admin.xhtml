@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!--
+    Layout shared by all admin pages: top banner, sidebar and content area.
+    Pages use it with <ui:composition template="/WEB-INF/templates/admin.xhtml">
+    and define "title", "content" and optionally "metadata" and "head".
+    The page sets <ui:param name="activePage" value="..."/> to highlight its menu item.
+-->
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:p="http://primefaces.org/ui"
+      lang="en">
+
+<ui:insert name="metadata"/>
+
+<h:head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title><ui:insert name="title">Admin</ui:insert> · Luxury Car Rental Admin</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
+    <h:outputStylesheet name="css/admin-style.css"/>
+    <ui:insert name="head"/>
+</h:head>
+
+<h:body styleClass="admin-body">
+
+    <!-- Top banner -->
+    <div class="top-banner">
+        <div class="banner-left">
+            <h:link outcome="/pages/admin/dashboard.xhtml" styleClass="logo">
+                <span class="logo-text">LUXURY CAR RENTAL - ADMIN</span>
+            </h:link>
+        </div>
+        <div class="banner-right">
+            <div class="admin-info">
+                <div class="admin-avatar">
+                    #{empty adminSessionBean.admin.username ? 'A' : adminSessionBean.admin.username.substring(0, 1).toUpperCase()}
+                </div>
+                <span class="admin-name">#{adminSessionBean.admin.username}</span>
+            </div>
+            <h:form>
+                <h:commandButton value="Logout"
+                                 action="#{adminSessionBean.logout}"
+                                 styleClass="logout-btn"/>
+            </h:form>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="menu-section">
+            <div class="section-title">Main</div>
+            <h:link outcome="/pages/admin/dashboard.xhtml"
+                    styleClass="menu-item #{activePage eq 'dashboard' ? 'active' : ''}">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                </span>
+                <span class="menu-text">Dashboard</span>
+            </h:link>
+        </div>
+
+        <div class="menu-section">
+            <div class="section-title">Car Management</div>
+            <h:link outcome="/pages/admin/car_type.xhtml"
+                    styleClass="menu-item #{activePage eq 'car_type' ? 'active' : ''}">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                </span>
+                <span class="menu-text">Car Types</span>
+            </h:link>
+            <h:link outcome="/pages/admin/car.xhtml"
+                    styleClass="menu-item #{activePage eq 'car' ? 'active' : ''}">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 13l1.5-4.5h15L21 13v6H3v-6z"/>
+                        <circle cx="7.5" cy="19.5" r="1.5"/>
+                        <circle cx="16.5" cy="19.5" r="1.5"/>
+                    </svg>
+                </span>
+                <span class="menu-text">Cars</span>
+            </h:link>
+        </div>
+
+        <div class="menu-section">
+            <div class="section-title">Booking Management</div>
+            <h:link outcome="/pages/admin/bookings.xhtml"
+                    styleClass="menu-item #{activePage eq 'bookings' ? 'active' : ''}">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </span>
+                <span class="menu-text">All Bookings</span>
+            </h:link>
+        </div>
+
+        <div class="menu-section">
+            <div class="section-title">User Management</div>
+            <h:link outcome="/pages/admin/customers.xhtml"
+                    styleClass="menu-item #{activePage eq 'customers' ? 'active' : ''}">
+                <span class="menu-icon">
+                    <svg viewBox="0 0 24 24" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </span>
+                <span class="menu-text">Customers</span>
+            </h:link>
+        </div>
+    </nav>
+
+    <!-- Page content -->
+    <main class="admin-content">
+        <ui:insert name="content"/>
+    </main>
+
+</h:body>
+</html>

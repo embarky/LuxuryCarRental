@@ -1,22 +1,22 @@
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml"
-      xmlns:h="http://xmlns.jcp.org/jsf/html"
-      xmlns:f="http://xmlns.jcp.org/jsf/core"
-      xmlns:p="http://primefaces.org/ui"
-      lang="en">
+<ui:composition
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                template="/resources/templates/master_template.xhtml">
 
-<h:head>
-    <title>Luxury Car Rental - Login</title>
-</h:head>
+    <ui:define name="title">Login · Luxury Car Rental</ui:define>
 
-<h:body>
-
+    <ui:define name="content">
+        <div class="page-shell">
+            <div class="page-card">
     <!-- Global messages at the top -->
     <p:messages id="globalMessages" autoUpdate="true" closable="true" showDetail="true" />
 
     <h2>User Login</h2>
 
-    <p:tabView dynamic="false" cache="false">
+    <p:tabView dynamic="false" cache="false" activeIndex="#{param.role eq 'admin' ? 1 : 0}">
 
         <!-- Customer Login -->
         <p:tab title="Customer Login">
@@ -82,5 +82,8 @@
         </p:tab>
 
     </p:tabView>
-</h:body>
-</html>
+            </div>
+        </div>
+    </ui:define>
+
+</ui:composition>

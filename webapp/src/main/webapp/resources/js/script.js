@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Navbar scroll effect
     window.addEventListener('scroll', () => {
         const navbar = document.getElementById('navbar');
+        if (!navbar) return;
         if (window.scrollY > 50) {
             navbar.classList.add('scrolled');
         } else {
@@ -12,23 +13,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Smooth scroll for navigation links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
+            const href = this.getAttribute('href');
+            if (href.length < 2) return;   // plain "#" links (e.g. PrimeFaces menu items)
+            const target = document.querySelector(href);
+            if (target) e.preventDefault();
             if (target) {
                 target.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'
                 });
             }
-        });
-    });
-
-    // Booking button click event handler
-    document.querySelectorAll('.book-btn, .btn-primary').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            const card = e.target.closest('.car-card');
-            const carName = card ? card.querySelector('h3').textContent : 'Luxury Vehicle';
-            alert(`Thank you for your booking!\n\nModel: ${carName}\n\nOur dedicated account manager will contact you within 30 minutes to provide one-on-one VIP service.\n\nCustomer Hotline: 400-888-8888`);
         });
     });
 

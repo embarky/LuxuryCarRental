@@ -49,7 +49,7 @@ public class RegisterBean implements Serializable {
     // ========== REGISTER ADMIN ==========
     public String registerAdmin() {
         try {
-            // 创建 Admin 对象
+            // Build the Admin object
             Admin admin = new Admin();
             admin.setUsername(adminUsername);
             admin.setPassword(adminPassword);

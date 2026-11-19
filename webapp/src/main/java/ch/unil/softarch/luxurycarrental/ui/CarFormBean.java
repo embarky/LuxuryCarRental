@@ -80,7 +80,7 @@ public class CarFormBean implements Serializable {
     public String save() {
         FacesContext ctx = FacesContext.getCurrentInstance();
 
-        // 检查车型
+        // Check the car type
         if (carTypeId == null) {
             ctx.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR,
                     "Please select a Car Type!", null));
@@ -117,7 +117,7 @@ public class CarFormBean implements Serializable {
         return "/pages/admin/car.xhtml?faces-redirect=true";
     }
 
-    // --------------- UUID Converter 内置 Bean 方法 ---------------
+    // --------------- UUID converter provided by this bean ---------------
     public Converter getUuidConverter() {
         return new Converter<UUID>() {
             @Override

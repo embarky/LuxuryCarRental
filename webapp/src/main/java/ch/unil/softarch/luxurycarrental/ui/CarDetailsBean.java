@@ -58,30 +58,38 @@ public class CarDetailsBean implements Serializable {
     public LocalDate getEndDate() { return endDate; }
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
 
+    /**
+     * Sends a visitor who is not logged in to the login page, and back to this car afterwards.
+     */
+    public String loginToBook() {
+        String target = "/pages/cars_details.xhtml" + (car != null ? "?carId=" + car.getId() : "");
+        LoginRedirect.remember(LoginRedirect.CUSTOMER_TARGET, target);
+        return "/pages/login.xhtml?faces-redirect=true";
+    }
+
     // Book the car
-    public void bookCar() {
+    public String bookCar() {
         FacesContext context = FacesContext.getCurrentInstance();
 
         if (!customerSessionBean.isLoggedIn() || customerSessionBean.getCustomer() == null) {
-            context.addMessage(null,
-                    new FacesMessage(FacesMessage.SEVERITY_WARN, "Error", "Please login first."));
-            return;
+            // The session may have expired while the page was open
+            return loginToBook();
         }
 
         if (startDate == null || endDate == null) {
             context.addMessage(null,
                     new FacesMessage(FacesMessage.SEVERITY_WARN, "Error", "Please select start and end dates."));
-            return;
+            return null;
         }
 
         if (!endDate.isAfter(startDate)) {
             context.addMessage(null,
                     new FacesMessage(FacesMessage.SEVERITY_WARN, "Error", "End date must be after start date."));
-            return;
+            return null;
         }
 
         try {
-            UUID customerId = customerSessionBean.getCustomer().getId(); // 直接从 session bean 获取
+            UUID customerId = customerSessionBean.getCustomer().getId(); // logged-in customer from the session
             bookingClient.createBooking(customerId, car.getId(), startDate, endDate);
 
             context.addMessage(null,
@@ -98,5 +106,6 @@ public class CarDetailsBean implements Serializable {
                     new FacesMessage(FacesMessage.SEVERITY_ERROR, "Error",
                             "Failed to create booking: " + e.getMessage()));
         }
+        return null;
     }
 }

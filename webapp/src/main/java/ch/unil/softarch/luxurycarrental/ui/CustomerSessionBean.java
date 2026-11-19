@@ -31,8 +31,9 @@ public class CustomerSessionBean implements Serializable {
             customer = customerClient.authenticate(email, password);
 
             if (customer != null) {
-                // Login successful, redirect to customer page
-                return "/index.xhtml?faces-redirect=true";
+                // Login successful: back to the page the customer asked for, or the home page
+                password = null;
+                return LoginRedirect.consume(LoginRedirect.CUSTOMER_TARGET, "/index.xhtml?faces-redirect=true");
             } else {
                 // Login failed
                 context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR,

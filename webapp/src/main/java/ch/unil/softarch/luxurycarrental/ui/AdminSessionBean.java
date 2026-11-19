@@ -29,8 +29,10 @@ public class AdminSessionBean implements Serializable {
             admin = adminClient.loginAdmin(email, password);
 
             if (admin != null) {
-                // Login successful, redirect to admin page
-                return "/pages/admin/admin.xhtml?faces-redirect=true";
+                // Login successful: back to the page the admin asked for, or the dashboard
+                password = null;
+                return LoginRedirect.consume(LoginRedirect.ADMIN_TARGET,
+                        "/pages/admin/dashboard.xhtml?faces-redirect=true");
             } else {
                 // Login failed
                 context.addMessage(null, new FacesMessage(FacesMessage.SEVERITY_ERROR,
@@ -53,6 +55,10 @@ public class AdminSessionBean implements Serializable {
         admin = null;
         FacesContext.getCurrentInstance().getExternalContext().invalidateSession();
         return "/index.xhtml?faces-redirect=true";
+    }
+
+    public boolean isLoggedIn() {
+        return admin != null;
     }
 
     // ===== Getters & Setters =====

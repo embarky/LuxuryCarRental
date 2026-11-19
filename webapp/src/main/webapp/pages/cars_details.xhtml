@@ -5,9 +5,10 @@
                 xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
                 template="/resources/templates/master_template.xhtml">
 
-    <ui:define name="title">Car Details</ui:define>
+    <ui:define name="title">Car Details · Luxury Car Rental</ui:define>
 
     <ui:define name="content">
+        <div class="page-shell">
         <h:form id="detailsForm">
 
             <p:growl id="growl" showDetail="true" life="5000"/>
@@ -44,19 +45,33 @@
             </p:panel>
 
             <p:panel header="Book This Car" styleClass="shadow p-4 mt-4">
-                <p:calendar id="startDate" value="#{carDetailsBean.startDate}" pattern="yyyy-MM-dd"
-                            label="Start Date" showIcon="true" required="true"/>
-                <p:calendar id="endDate" value="#{carDetailsBean.endDate}" pattern="yyyy-MM-dd"
-                            label="End Date" showIcon="true" required="true"/>
+                <!-- Logged in: choose dates and book -->
+                <h:panelGroup rendered="#{customerSessionBean.loggedIn}">
+                    <p:calendar id="startDate" value="#{carDetailsBean.startDate}" pattern="yyyy-MM-dd"
+                                label="Start Date" showIcon="true" required="true"/>
+                    <p:calendar id="endDate" value="#{carDetailsBean.endDate}" pattern="yyyy-MM-dd"
+                                label="End Date" showIcon="true" required="true"/>
 
-                <p:commandButton value="Book This Car"
-                                 action="#{carDetailsBean.bookCar}"
-                                 update="growl"
-                                 process="@form"
-                                 ajax="true"/>
+                    <p:commandButton value="Book This Car"
+                                     action="#{carDetailsBean.bookCar}"
+                                     update="growl"
+                                     process="@form"
+                                     ajax="true"/>
+                </h:panelGroup>
+
+                <!-- Not logged in: go to the login page and come back here afterwards -->
+                <h:panelGroup rendered="#{not customerSessionBean.loggedIn}">
+                    <p>Log in to choose your dates and book this car.</p>
+                    <p:commandButton value="Log in to book"
+                                     icon="pi pi-sign-in"
+                                     action="#{carDetailsBean.loginToBook}"
+                                     process="@this"
+                                     ajax="false"/>
+                </h:panelGroup>
             </p:panel>
 
         </h:form>
+        </div>
     </ui:define>
 
 </ui:composition>
