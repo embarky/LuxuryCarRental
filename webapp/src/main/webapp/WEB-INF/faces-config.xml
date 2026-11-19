@@ -3,4 +3,8 @@
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-facesconfig_4_0.xsd"
               version="4.0">
+    <application>
+        <!-- Version parameter on CSS/JS links, so a new deployment is never hidden by the browser cache -->
+        <resource-handler>ch.unil.softarch.luxurycarrental.ui.VersionedResourceHandler</resource-handler>
+    </application>
 </faces-config>

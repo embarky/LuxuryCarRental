@@ -353,6 +353,32 @@ def seed_bookings(api: Api, cars: List[Dict[str, Any]], customers: List[Dict[str
     print("Bookings: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
 
 
+def seed_demo_bookings(api: Api, cars: List[Dict[str, Any]], demo: Dict[str, Any]) -> None:
+    """The demo customer gets one booking in each typical state, so "My bookings" is not empty."""
+    bookable = [c for c in cars if c.get("status") == "AVAILABLE"]
+    today = date.today()
+    plans = [  # (days from today, length, what to do after reserving)
+        (0, 2, ["pay", "pick-up", "complete"]),   # a finished trip
+        (0, 3, ["pay", "pick-up"]),               # on the road right now
+        (21, 4, ["pay"]),                         # upcoming, paid
+        (45, 2, []),                              # reserved, waiting for payment
+    ]
+    made = 0
+    for offset, length, steps in plans:
+        start = today + timedelta(days=offset)
+        for car in random.sample(bookable, min(15, len(bookable))):
+            booking = api.call("POST", "/bookings", {
+                "customerId": demo["id"], "carId": car["id"],
+                "startDate": str(start), "endDate": str(start + timedelta(days=length)),
+            }, quiet=True)
+            if booking:
+                for step in steps:
+                    api.call("POST", f"/bookings/{booking['bookingId']}/{step}")
+                made += 1
+                break
+    print(f"Demo customer: {made} bookings")
+
+
 # ------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------
@@ -375,6 +401,9 @@ def main() -> None:
     customers = seed_customers(api)
     print("\n▶ Bookings...")
     seed_bookings(api, cars, customers)
+    demo = next((c for c in customers if c.get("email") == DEMO_CUSTOMER["email"]), None)
+    if demo:
+        seed_demo_bookings(api, cars, demo)
 
     print("\n✅ Seeding complete.")
     print(f"Demo logins: {ADMIN_EMAIL} / {ADMIN_PASSWORD} (admin), "

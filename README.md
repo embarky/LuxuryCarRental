@@ -10,14 +10,15 @@ through JPA. Everything runs on Payara and starts with a single `docker compose 
 
 Developed for the *Software Architecture* course at the University of Lausanne (UNIL), 2025.
 
-<!--
 ## Screenshots
-Add screenshots to docs/screenshots/ and remove this comment:
 
-| Car catalogue | Booking a car | Admin dashboard |
-|---|---|---|
-| ![](docs/screenshots/cars.png) | ![](docs/screenshots/booking.png) | ![](docs/screenshots/admin-dashboard.png) |
--->
+| Home page | Car page with live price |
+|---|---|
+| ![Home page](docs/screenshots/home.jpg) | ![Car page](docs/screenshots/car-details.jpg) |
+| **Fleet** | **Checks before the first payment** |
+| ![Fleet](docs/screenshots/fleet.jpg) | ![Account checklist](docs/screenshots/account-checks.jpg) |
+| **Admin dashboard** | **Welcome email with confirmation code (Mailpit)** |
+| ![Admin dashboard](docs/screenshots/admin-dashboard.jpg) | ![Email](docs/screenshots/email.jpg) |
 
 ## Features
 

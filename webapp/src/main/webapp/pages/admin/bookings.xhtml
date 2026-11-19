@@ -49,14 +49,14 @@
                                     <h:link outcome="/pages/admin/customer_detail.xhtml" value="#{b.customer.fullName}">
                                         <f:param name="id" value="#{b.customer.id}"/>
                                     </h:link>
-                                    <div class="cell-sub">#{b.customer.email}</div>
+                                    <div class="cell-sub truncate" title="#{b.customer.email}">#{b.customer.email}</div>
                                 </td>
                                 <td>
                                     <div class="cell-title">#{b.car.displayName}</div>
                                     <div class="cell-sub">#{b.car.licensePlate}</div>
                                 </td>
-                                <td class="nowrap">
-                                    #{fmt.date(b.startDate)} → #{fmt.date(b.endDate)}
+                                <td>
+                                    <span class="nowrap">#{fmt.date(b.startDate)} →</span> <span class="nowrap">#{fmt.date(b.endDate)}</span>
                                     <div class="cell-sub">#{b.days} day(s)</div>
                                 </td>
                                 <td>

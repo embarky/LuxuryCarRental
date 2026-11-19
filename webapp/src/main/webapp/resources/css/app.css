@@ -379,6 +379,13 @@
     color: var(--muted);
 }
 
+.cell-sub.truncate {
+    max-width: 190px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .thumb {
     width: 72px;
     height: 44px;

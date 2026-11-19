@@ -33,8 +33,8 @@ public class RegisterBean implements Serializable {
         try {
             api.register(form);
             session.start(api.loginCustomer(form.email, form.password));
-            Messages.info("Welcome, " + form.firstName + "! Top up your balance, and our team will verify "
-                    + "your driving licence before your first payment.");
+            Messages.info("Welcome, " + form.firstName + "! We have sent a code to " + form.email
+                    + " to confirm your email address.");
             Messages.keep();
             return LoginRedirect.consume(LoginRedirect.CUSTOMER_TARGET, "/pages/account.xhtml?faces-redirect=true");
         } catch (ApiException e) {

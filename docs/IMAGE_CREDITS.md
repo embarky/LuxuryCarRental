@@ -28,4 +28,6 @@ The list is generated from `scripts/seeder/car_photos.json`.
 | BMW X5 M50i | [BMW G05 X5 M50i Phytonic Blue (1).jpg](https://commons.wikimedia.org/wiki/File:BMW_G05_X5_M50i_Phytonic_Blue_(1).jpg) | Damian B Oh | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | BMW X5 M50i | [22 BMW X5 M50i.jpg](https://commons.wikimedia.org/wiki/File:22_BMW_X5_M50i.jpg) | HJUdall | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
 
+The background photo of the home page comes from [Unsplash](https://unsplash.com) (image `photo-1503376780353-7e6692767b70`) and is used under the [Unsplash License](https://unsplash.com/license).
+
 No changes were made to the photos apart from resizing by Wikimedia's thumbnail service.
