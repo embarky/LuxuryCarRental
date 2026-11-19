@@ -36,15 +36,28 @@ public final class EmailTemplates {
     // Accounts
     // -------------------------------------------------------------------------
 
-    public static Email customerWelcome(Customer customer) {
-        return new Email("Welcome to Luxury Car Rental",
+    public static Email customerWelcome(Customer customer, String code, int validHours) {
+        return new Email("Welcome to Luxury Car Rental – confirm your email",
                 layout("Welcome, " + esc(customer.getFirstName()) + "!",
-                        paragraph("Your account has been created. You can now browse our fleet and book "
-                                + "your next car in a few clicks.")
+                        paragraph("Your account has been created. You can already browse our fleet and "
+                                + "reserve a car. To pay for a booking, please confirm your email address "
+                                + "with this code on your account page:")
+                                + codeBox(code)
+                                + paragraph("The code is valid for " + validHours + " hours.")
                                 + details(
                                 row("Name", esc(customer.getFirstName() + " " + customer.getLastName())),
                                 row("Email", esc(customer.getEmail())))
-                                + paragraph("We look forward to having you on the road with us.")));
+                                + paragraph("We also check your driving licence once before your first payment. "
+                                + "We look forward to having you on the road with us.")));
+    }
+
+    public static Email emailConfirmationCode(String name, String code, int validHours) {
+        return new Email("Confirm your email address",
+                layout("Confirm your email",
+                        paragraph("Hi " + esc(name) + ", here is your new confirmation code:")
+                                + codeBox(code)
+                                + paragraph("The code is valid for " + validHours + " hours. Earlier codes "
+                                + "no longer work.")));
     }
 
     public static Email adminWelcome(Admin admin) {
@@ -62,10 +75,7 @@ public final class EmailTemplates {
         return new Email("Your password reset code",
                 layout("Reset your password",
                         paragraph("Hi " + esc(name) + ", use this code to choose a new password:")
-                                + "<div style=\"margin:24px 0;text-align:center;\">"
-                                + "<span style=\"display:inline-block;padding:14px 28px;font-size:30px;"
-                                + "letter-spacing:8px;font-weight:bold;background:#f6f1e6;border:1px solid "
-                                + GOLD + ";border-radius:8px;color:#1a1a1a;\">" + esc(code) + "</span></div>"
+                                + codeBox(code)
                                 + paragraph("The code expires in " + validMinutes + " minutes. If you did not "
                                 + "ask for a new password, you can ignore this email.")));
     }
@@ -160,6 +170,13 @@ public final class EmailTemplates {
     // -------------------------------------------------------------------------
     // Shared helpers (also used for the PDF confirmation)
     // -------------------------------------------------------------------------
+
+    private static String codeBox(String code) {
+        return "<div style=\"margin:24px 0;text-align:center;\">"
+                + "<span style=\"display:inline-block;padding:14px 28px;font-size:30px;"
+                + "letter-spacing:8px;font-weight:bold;background:#f6f1e6;border:1px solid "
+                + GOLD + ";border-radius:8px;color:#1a1a1a;\">" + esc(code) + "</span></div>";
+    }
 
     public static String carName(Car car) {
         return car.getCarType().getBrand() + " " + car.getCarType().getModel();

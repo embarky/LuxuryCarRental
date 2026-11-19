@@ -30,6 +30,7 @@ public class AccountBean implements Serializable {
     private final PasswordChange password = new PasswordChange();
     private String confirmPassword;
     private BigDecimal topUpAmount;
+    private String emailCode;
 
     @PostConstruct
     public void init() {
@@ -85,7 +86,30 @@ public class AccountBean implements Serializable {
         }
     }
 
+    public void confirmEmail() {
+        try {
+            session.setCustomer(api.confirmEmail(getCustomer().getId(), emailCode));
+            Messages.info(getCustomer().isVerifiedIdentity()
+                    ? "Thank you, your email is confirmed. You can now pay your bookings."
+                    : "Thank you, your email is confirmed.");
+        } catch (ApiException e) {
+            Messages.error(e);
+        } finally {
+            emailCode = null;
+        }
+    }
+
+    public void resendEmailCode() {
+        try {
+            Messages.info(api.sendEmailCode(getCustomer().getId()));
+        } catch (ApiException e) {
+            Messages.error(e);
+        }
+    }
+
     public Customer getCustomer() { return session.getCustomer(); }
+    public String getEmailCode() { return emailCode; }
+    public void setEmailCode(String emailCode) { this.emailCode = emailCode; }
     public ProfileUpdate getProfile() { return profile; }
     public PasswordChange getPassword() { return password; }
     public String getConfirmPassword() { return confirmPassword; }

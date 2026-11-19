@@ -383,7 +383,7 @@
     width: 72px;
     height: 44px;
     border-radius: 6px;
-    background: #ece8e0 center / contain no-repeat;
+    background: #ece8e0 center / cover no-repeat;
 }
 
 /* ---- Badges -------------------------------------------------------------- */
@@ -406,6 +406,60 @@
 .badge-cancelled, .badge-expired { background: #efefef; color: #5f6368; }
 .badge-rejected { background: var(--danger-soft); color: var(--danger); }
 .badge-gold { background: var(--gold-soft); color: #8a6a2f; }
+
+/* ---- Checklist (account page) ---------------------------------------------- */
+
+.checklist-card {
+    margin-bottom: 20px;
+}
+
+.checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+}
+
+.checklist li {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.check-mark {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.checklist li.done .check-mark {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.checklist li.done b {
+    color: var(--muted);
+}
+
+.code-row {
+    margin-top: 10px;
+    align-items: center;
+}
+
+.code-input {
+    width: 130px;
+    font-size: 18px;
+    letter-spacing: 4px;
+    text-align: center;
+}
 
 /* ---- Alerts / notices ------------------------------------------------------ */
 
@@ -504,7 +558,7 @@
 
 .car-hero-image {
     aspect-ratio: 16 / 9;
-    background: #ece8e0 center / contain no-repeat;
+    background: #ece8e0 center / cover no-repeat;
     border-radius: var(--radius);
     border: 1px solid var(--line);
 }

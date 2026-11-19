@@ -80,10 +80,23 @@ public class CustomerAdminBean implements Serializable {
         }
     }
 
+    /** Support override, e.g. when the customer could not receive the email. */
+    public void confirmEmail(Customer c) {
+        try {
+            api.setEmailVerified(c.getId(), true);
+            Messages.info("The email address of " + c.getFullName() + " is now marked as confirmed.");
+        } catch (ApiException e) {
+            Messages.error(e);
+        }
+        reloadOne();
+    }
+
     public void setVerified(Customer c, boolean verified) {
         try {
             api.setVerified(c.getId(), verified);
-            Messages.info(c.getFullName() + (verified ? " is now verified and can pay bookings." : " is no longer verified."));
+            Messages.info(c.getFullName() + (!verified ? " is no longer verified."
+                    : c.isEmailVerified() ? " is now verified and can pay bookings."
+                    : " is now verified; they still need to confirm their email before paying."));
         } catch (ApiException e) {
             Messages.error(e);
         }

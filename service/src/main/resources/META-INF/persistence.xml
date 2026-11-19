@@ -10,10 +10,11 @@
         <class>ch.unil.softarch.luxurycarrental.domain.entities.CarType</class>
         <class>ch.unil.softarch.luxurycarrental.domain.entities.Car</class>
         <class>ch.unil.softarch.luxurycarrental.domain.entities.Booking</class>
-        <class>ch.unil.softarch.luxurycarrental.service.PasswordResetCode</class>
+        <class>ch.unil.softarch.luxurycarrental.service.VerificationCode</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
-            <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
+            <!-- Tables are created and changed by Flyway (db/migration), never by JPA -->
+            <property name="jakarta.persistence.schema-generation.database.action" value="none"/>
             <property name="eclipselink.logging.level" value="WARNING"/>
             <property name="eclipselink.logging.parameters" value="false"/>
         </properties>

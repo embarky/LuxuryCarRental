@@ -12,7 +12,7 @@
         <div class="page-header">
             <div>
                 <h1>Customers</h1>
-                <p>Verify a customer after checking their driving licence; only verified customers can pay.</p>
+                <p>Verify a customer after checking their driving licence; customers can pay once their licence is verified and their email confirmed.</p>
             </div>
         </div>
 
@@ -54,6 +54,7 @@
                                 <td>
                                     <h:outputText value="Verified" styleClass="badge badge-completed" rendered="#{c.verifiedIdentity}"/>
                                     <h:outputText value="To verify" styleClass="badge badge-pending" rendered="#{not c.verifiedIdentity}"/>
+                                    <h:panelGroup layout="block" styleClass="cell-sub" rendered="#{not c.emailVerified}">Email not confirmed</h:panelGroup>
                                 </td>
                                 <td class="actions">
                                     <h:commandButton value="Verify" action="#{customerAdminBean.setVerified(c, true)}"

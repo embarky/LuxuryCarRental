@@ -18,8 +18,14 @@
             </div>
 
             <h:panelGroup layout="block" styleClass="notice notice-warn" style="margin-bottom: 20px;"
-                          rendered="#{not customerSessionBean.customer.verifiedIdentity}">
-                Your identity has not been verified yet, so you cannot pay for now. Our team checks your licence shortly.
+                          rendered="#{not customerSessionBean.customer.emailVerified}">
+                <b>Please confirm your email address to pay.</b> Enter the code we sent you on
+                <h:link value="your account page" outcome="/pages/account.xhtml"/>.
+            </h:panelGroup>
+            <h:panelGroup layout="block" styleClass="notice notice-warn" style="margin-bottom: 20px;"
+                          rendered="#{customerSessionBean.customer.emailVerified and not customerSessionBean.customer.verifiedIdentity}">
+                Your driving licence has not been checked yet, so you cannot pay for now. Our team checks it shortly
+                and lets you know by email.
             </h:panelGroup>
 
             <h:panelGroup layout="block" styleClass="card empty" rendered="#{empty orderBean.bookings}">
@@ -63,7 +69,7 @@
                                                  onclick="return confirm('Cancel this booking?');"/>
                                 <h:commandButton value="Pay #{fmt.chf(b.amountDue)}" action="#{orderBean.pay(b.bookingId)}"
                                                  rendered="#{orderBean.canPay(b)}"
-                                                 disabled="#{not customerSessionBean.customer.verifiedIdentity}"
+                                                 disabled="#{not customerSessionBean.customer.readyToPay}"
                                                  styleClass="btn btn-primary btn-sm"/>
                             </div>
                         </div>

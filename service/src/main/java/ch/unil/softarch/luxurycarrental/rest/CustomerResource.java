@@ -98,6 +98,33 @@ public class CustomerResource {
         return customers.setVerified(id, verified);
     }
 
+    /** Sends a new email confirmation code to the customer. */
+    @POST
+    @Path("/{id}/email-confirmation")
+    @LoggedIn
+    public MessageResponse sendEmailCode(@PathParam("id") UUID id) {
+        Caller.of(security).requireSelfOrAdmin(id);
+        customers.sendEmailConfirmationCode(id);
+        return new MessageResponse("We have sent a new code to your email address.");
+    }
+
+    /** Confirms the email address with the code from the email. */
+    @PUT
+    @Path("/{id}/email-confirmation")
+    @LoggedIn
+    public Customer confirmEmail(@PathParam("id") UUID id, CodeRequest request) {
+        Caller.of(security).requireSelfOrAdmin(id);
+        return customers.confirmEmail(id, request == null ? null : request.code);
+    }
+
+    /** Administrators only: mark an email as confirmed (or not) without a code. */
+    @PUT
+    @Path("/{id}/email-verified")
+    public Customer setEmailVerified(@PathParam("id") UUID id,
+                                     @QueryParam("value") @DefaultValue("true") boolean verified) {
+        return customers.setEmailVerified(id, verified);
+    }
+
     @DELETE
     @Path("/{id}")
     public MessageResponse remove(@PathParam("id") UUID id) {

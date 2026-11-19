@@ -25,6 +25,7 @@ final class TestData {
         c.setEmail("ada@example.com");
         c.setDateOfBirth(LocalDate.of(1990, 1, 1));
         c.setDrivingLicenseExpiryDate(LocalDate.of(2030, 1, 1));
+        c.setEmailVerified(true);
         c.setVerifiedIdentity(verified);
         c.setBalance(new BigDecimal(balance));
         return c;

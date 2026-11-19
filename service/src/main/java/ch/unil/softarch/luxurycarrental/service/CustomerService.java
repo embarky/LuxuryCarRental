@@ -9,6 +9,7 @@ import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
 import ch.unil.softarch.luxurycarrental.domain.model.Money;
 import ch.unil.softarch.luxurycarrental.security.PasswordHasher;
 import ch.unil.softarch.luxurycarrental.security.Role;
+import ch.unil.softarch.luxurycarrental.service.VerificationCode.Purpose;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
@@ -35,7 +36,7 @@ public class CustomerService {
     private EntityManager em;
 
     @Inject
-    private PasswordResetService resetCodes;
+    private VerificationCodeService codes;
 
     @Inject
     private Event<MailEvent> mail;
@@ -71,8 +72,12 @@ public class CustomerService {
         }
         checkUnique(null, c.getEmail(), c.getPhoneNumber(), c.getDrivingLicenseNumber());
 
+        c.setEmailVerified(false);
+
         em.persist(c);
-        mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.customerWelcome(c)));
+        String code = codes.issue(Purpose.EMAIL_CONFIRMATION, Role.CUSTOMER, c.getEmail());
+        mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.customerWelcome(c, code,
+                (int) VerificationCodeService.EMAIL_CONFIRMATION_VALIDITY.toHours())));
         return c;
     }
 
@@ -196,6 +201,40 @@ public class CustomerService {
     }
 
     // -------------------------------------------------------------------------
+    // Email confirmation
+    // -------------------------------------------------------------------------
+
+    /** Sends a new confirmation code (the previous one stops working). */
+    @Transactional
+    public void sendEmailConfirmationCode(UUID id) {
+        Customer c = get(id);
+        if (c.isEmailVerified()) {
+            throw new DomainException("Your email address is already confirmed.");
+        }
+        String code = codes.issue(Purpose.EMAIL_CONFIRMATION, Role.CUSTOMER, c.getEmail());
+        mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.emailConfirmationCode(c.getFirstName(), code,
+                (int) VerificationCodeService.EMAIL_CONFIRMATION_VALIDITY.toHours())));
+    }
+
+    @Transactional(dontRollbackOn = DomainException.class)
+    public Customer confirmEmail(UUID id, String code) {
+        Customer c = get(id);
+        if (!c.isEmailVerified()) {
+            codes.consume(Purpose.EMAIL_CONFIRMATION, Role.CUSTOMER, c.getEmail(), code);
+            c.setEmailVerified(true);
+        }
+        return c;
+    }
+
+    /** Support override by an administrator, e.g. when the customer confirmed by phone. */
+    @Transactional
+    public Customer setEmailVerified(UUID id, boolean verified) {
+        Customer c = get(id);
+        c.setEmailVerified(verified);
+        return c;
+    }
+
+    // -------------------------------------------------------------------------
     // Password reset
     // -------------------------------------------------------------------------
 
@@ -203,18 +242,18 @@ public class CustomerService {
     @Transactional
     public void sendPasswordResetCode(String email) {
         findByEmail(email).ifPresent(c -> {
-            String code = resetCodes.issue(Role.CUSTOMER, c.getEmail());
+            String code = codes.issue(Purpose.PASSWORD_RESET, Role.CUSTOMER, c.getEmail());
             mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.passwordResetCode(c.getFirstName(), code,
-                    (int) PasswordResetService.VALIDITY.toMinutes())));
+                    (int) VerificationCodeService.PASSWORD_RESET_VALIDITY.toMinutes())));
         });
     }
 
     @Transactional(dontRollbackOn = DomainException.class)
     public void resetPassword(String email, String code, String newPassword) {
         Customer c = findByEmail(email)
-                .orElseThrow(() -> new DomainException("This code has expired. Please ask for a new one."));
+                .orElseThrow(() -> new DomainException("This code is no longer valid. Please ask for a new one."));
         PasswordHasher.checkPolicy(newPassword);
-        resetCodes.consume(Role.CUSTOMER, c.getEmail(), code);
+        codes.consume(Purpose.PASSWORD_RESET, Role.CUSTOMER, c.getEmail(), code);
         c.setPassword(PasswordHasher.hash(newPassword));
         mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.passwordChanged(c.getFirstName())));
     }

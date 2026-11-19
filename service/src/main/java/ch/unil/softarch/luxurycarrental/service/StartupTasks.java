@@ -1,6 +1,7 @@
 package ch.unil.softarch.luxurycarrental.service;
 
 import jakarta.annotation.PostConstruct;
+import jakarta.ejb.DependsOn;
 import jakarta.ejb.Schedule;
 import jakarta.ejb.Singleton;
 import jakarta.ejb.Startup;
@@ -16,6 +17,7 @@ import jakarta.inject.Inject;
  */
 @Singleton
 @Startup
+@DependsOn("DatabaseMigration")   // the tables must exist first
 public class StartupTasks {
 
     @Inject

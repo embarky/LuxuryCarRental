@@ -68,6 +68,18 @@ public class Api {
         return ApiClient.put("customers/" + id + "/verified", Map.of("value", verified), null, CUSTOMER);
     }
 
+    public Customer confirmEmail(UUID id, String code) {
+        return ApiClient.put("customers/" + id + "/email-confirmation", new CodeRequest(code), CUSTOMER);
+    }
+
+    public String sendEmailCode(UUID id) {
+        return ApiClient.post("customers/" + id + "/email-confirmation", null, MESSAGE).message;
+    }
+
+    public Customer setEmailVerified(UUID id, boolean verified) {
+        return ApiClient.put("customers/" + id + "/email-verified", Map.of("value", verified), null, CUSTOMER);
+    }
+
     public void deleteCustomer(UUID id) {
         ApiClient.delete("customers/" + id);
     }

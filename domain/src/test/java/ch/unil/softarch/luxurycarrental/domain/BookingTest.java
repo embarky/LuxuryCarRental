@@ -105,6 +105,15 @@ class BookingTest {
     }
 
     @Test
+    void customerWithUnconfirmedEmailCannotPay() {
+        customer.setEmailVerified(false);
+        DomainException e = assertThrows(DomainException.class, () -> booking.pay(NOW));
+        assertTrue(e.getMessage().contains("email"));
+        assertEquals(BookingStatus.PENDING, booking.getBookingStatus());
+        assertEquals(new BigDecimal("2000.00"), balance());
+    }
+
+    @Test
     void insufficientBalanceLeavesEverythingUnchanged() {
         customer.setBalance(new BigDecimal("1000.00"));
         assertThrows(DomainException.class, () -> booking.pay(NOW));

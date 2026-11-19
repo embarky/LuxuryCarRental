@@ -7,12 +7,15 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * A one-time code to reset a password, stored hashed in the database so that it survives
- * a server restart and cannot be read from the table.
+ * A one-time code sent by email, to reset a password or to confirm an email address.
+ * Stored hashed, so that it survives a server restart and cannot be read from the table.
  */
 @Entity
-@Table(name = "password_reset_code")
-public class PasswordResetCode {
+@Table(name = "verification_code")
+public class VerificationCode {
+
+    /** What a code may be used for; a code for one purpose is never accepted for another. */
+    public enum Purpose { PASSWORD_RESET, EMAIL_CONFIRMATION }
 
     static final int MAX_ATTEMPTS = 5;
 
@@ -22,25 +25,30 @@ public class PasswordResetCode {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private Purpose purpose;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Role role;
 
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "code_hash", nullable = false)
     private String codeHash;
 
-    @Column(nullable = false)
+    @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
 
     private int attempts;
 
     private boolean used;
 
-    protected PasswordResetCode() {
+    protected VerificationCode() {
     }
 
-    PasswordResetCode(Role role, String email, String codeHash, LocalDateTime expiresAt) {
+    VerificationCode(Purpose purpose, Role role, String email, String codeHash, LocalDateTime expiresAt) {
+        this.purpose = purpose;
         this.role = role;
         this.email = email;
         this.codeHash = codeHash;

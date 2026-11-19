@@ -17,6 +17,7 @@ Run by hand against a running API:
     API_BASE_URL=http://localhost:8080/luxurycarrental/api python database_seeder.py
 """
 
+import json
 import os
 import random
 import string
@@ -61,51 +62,53 @@ fake = Faker(["fr_CH", "de_CH"])
 random.seed(42)
 Faker.seed(42)
 
-# (brand, model, category, imagin make, imagin model family, engine, hp, top speed, 0-100, weight,
+# (brand, model, category, photo key in car_photos.json, engine, hp, top speed, 0-100, weight,
 #  drive, gearbox, seats, base price per day in CHF, description, features)
 CATALOGUE = [
-    ("Porsche", "911 Carrera S", "Sport", "porsche", "911", "3.0L twin-turbo flat-6", 450, 308, 3.5, 1515,
+    ("Porsche", "911 Carrera S", "Sport", "911", "3.0L twin-turbo flat-6", 450, 308, 3.5, 1515,
      "REAR_WHEEL_DRIVE", "AUTOMATIC", 4, 690, "The rear-engined icon: precise, fast and usable every day.",
      ["Sport Chrono", "Bose sound", "Adaptive cruise"]),
-    ("Porsche", "Cayenne", "SUV", "porsche", "cayenne", "3.0L turbo V6", 353, 248, 6.0, 2055,
+    ("Porsche", "Cayenne", "SUV", "cayenne", "3.0L turbo V6", 353, 248, 6.0, 2055,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 5, 420, "A sports car in SUV form, at home on the motorway and in the Alps.",
      ["Panoramic roof", "Heated seats", "Air suspension"]),
-    ("Porsche", "Taycan 4S", "Electric", "porsche", "taycan", "Dual-motor electric", 530, 250, 4.0, 2140,
+    ("Porsche", "Taycan 4S", "Electric", "taycan", "Dual-motor electric", 530, 250, 4.0, 2140,
      "ELECTRIC_AWD", "ELECTRIC", 4, 560, "Porsche handling with an 800-volt electric drive.",
      ["Fast charging", "Matrix LED", "Head-up display"]),
-    ("Mercedes-Benz", "G 63 AMG", "SUV", "mercedes", "gclass", "4.0L V8 biturbo", 585, 220, 4.5, 2560,
+    ("Mercedes-Benz", "G 63 AMG", "SUV", "g63", "4.0L V8 biturbo", 585, 220, 4.5, 2560,
      "FOUR_WHEEL_DRIVE", "AUTOMATIC", 5, 780, "The legendary off-roader with a hand-built AMG V8.",
      ["Three differential locks", "Burmester sound", "Massage seats"]),
-    ("Mercedes-Benz", "S 500", "Sedan", "mercedes", "sclass", "3.0L six-cylinder mild hybrid", 435, 250, 4.9, 2070,
+    ("Mercedes-Benz", "S 500", "Sedan", "s500", "3.0L six-cylinder mild hybrid", 435, 250, 4.9, 2070,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 5, 520, "The reference in comfort for long journeys.",
      ["Rear-seat comfort pack", "Night vision", "Ambient lighting"]),
-    ("Audi", "R8 V10", "Sport", "audi", "r8", "5.2L naturally aspirated V10", 570, 324, 3.4, 1590,
+    ("Audi", "R8 V10", "Sport", "r8", "5.2L naturally aspirated V10", 570, 324, 3.4, 1590,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 2, 820, "A mid-engined V10 supercar that is easy to drive.",
      ["Carbon interior", "Bang & Olufsen sound", "Launch control"]),
-    ("Audi", "RS 6 Avant", "Estate", "audi", "rs6", "4.0L V8 biturbo", 600, 280, 3.6, 2075,
+    ("Audi", "RS 6 Avant", "Estate", "rs6", "4.0L V8 biturbo", 600, 280, 3.6, 2075,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 5, 540, "Supercar pace with room for the whole family and their luggage.",
      ["Matrix LED", "Sport exhaust", "Tow bar"]),
-    ("Lamborghini", "Urus", "SUV", "lamborghini", "urus", "4.0L V8 biturbo", 650, 305, 3.6, 2200,
+    ("Lamborghini", "Urus", "SUV", "urus", "4.0L V8 biturbo", 650, 305, 3.6, 2200,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 5, 1150, "The fastest way to bring four friends to the mountains.",
      ["Anima drive modes", "Carbon brakes", "Panoramic roof"]),
-    ("Bentley", "Continental GT", "Grand Tourer", "bentley", "continental", "4.0L V8", 550, 318, 4.0, 2165,
+    ("Bentley", "Continental GT", "Grand Tourer", "conti", "4.0L V8", 550, 318, 4.0, 2165,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 4, 950, "Hand-finished grand tourer for crossing Europe in style.",
      ["Rotating display", "Naim audio", "Diamond-quilted seats"]),
-    ("Land Rover", "Range Rover", "SUV", "land-rover", "range-rover", "4.4L V8 twin-turbo", 530, 250, 4.6, 2585,
+    ("Land Rover", "Range Rover", "SUV", "rr", "4.4L V8 twin-turbo", 530, 250, 4.6, 2585,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 5, 640, "Quiet luxury on every surface, from Geneva to Zermatt.",
      ["Terrain response", "Meridian sound", "Executive seats"]),
-    ("Tesla", "Model S Plaid", "Electric", "tesla", "models", "Tri-motor electric", 1020, 322, 2.1, 2190,
+    ("Tesla", "Model S Plaid", "Electric", "plaid", "Tri-motor electric", 1020, 322, 2.1, 2190,
      "ELECTRIC_AWD", "ELECTRIC", 5, 380, "Over 1000 hp and a range for a weekend away.",
      ["Autopilot", "Premium audio", "Supercharger access"]),
-    ("BMW", "M4 Competition", "Sport", "bmw", "m4", "3.0L twin-turbo inline-6", 530, 290, 3.5, 1725,
+    ("BMW", "M4 Competition", "Sport", "m4", "3.0L twin-turbo inline-6", 530, 290, 3.5, 1725,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 4, 450, "A track-ready coupé that stays comfortable on the road.",
      ["Carbon bucket seats", "Laser lights", "Harman Kardon"]),
-    ("BMW", "X5 M60i", "SUV", "bmw", "x5", "4.4L V8", 530, 250, 4.3, 2340,
+    ("BMW", "X5 M50i", "SUV", "x5", "4.4L V8", 530, 250, 4.3, 2340,
      "ALL_WHEEL_DRIVE", "AUTOMATIC", 5, 390, "Versatile and powerful family SUV.",
      ["Sky lounge roof", "Driving assistant pro", "Third-zone climate"]),
 ]
 
-COLOURS = ["Black", "White", "Silver", "Grey", "Blue", "Red"]
+# Free-licence photos from Wikimedia Commons (credits: docs/IMAGE_CREDITS.md)
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "car_photos.json"), encoding="utf-8") as f:
+    PHOTOS: Dict[str, List[Dict[str, str]]] = json.load(f)
 REJECTION_REASONS = [
     "Driving licence could not be verified",
     "Car needed for unplanned maintenance",
@@ -178,12 +181,6 @@ def password() -> str:
     return "".join(chars)
 
 
-def image_url(make: str, family: str, colour: str) -> str:
-    """Studio render of the model in the given colour (imagin.studio, no sign-up needed)."""
-    return (f"https://cdn.imagin.studio/getimage?customer=img&make={make}"
-            f"&modelFamily={family}&paintId={colour.lower()}&zoomType=fullscreen")
-
-
 # ------------------------------------------------------------------
 # Fleet
 # ------------------------------------------------------------------
@@ -191,7 +188,7 @@ def image_url(make: str, family: str, colour: str) -> str:
 def seed_fleet(api: Api) -> List[Dict[str, Any]]:
     types = []
     for entry in CATALOGUE:
-        (brand, model, category, _make, _family, engine, power, speed, accel, weight,
+        (brand, model, category, _photo, engine, power, speed, accel, weight,
          drive, gearbox, seats, _price, description, features) = entry
         created = api.call("POST", "/cartypes", {
             "brand": brand, "model": model, "category": category, "engine": engine,
@@ -208,8 +205,9 @@ def seed_fleet(api: Api) -> List[Dict[str, Any]]:
     for i in range(SEED_CARS):
         # every model at least once, then random ones
         created_type, entry = types[i] if i < len(types) else random.choice(types)
-        make, family, base_price = entry[3], entry[4], entry[13]
-        colour = random.choice(COLOURS)
+        photo = random.choice(PHOTOS[entry[3]])
+        base_price = entry[12]
+        colour = photo["colour"]          # the colour of the car in the photo
         plate = None
         while plate is None or plate in plates:
             plate = f"{random.choice(['VD', 'GE', 'VS', 'ZH', 'BE'])} {random.randint(100000, 999999)}"
@@ -220,7 +218,7 @@ def seed_fleet(api: Api) -> List[Dict[str, Any]]:
             "color": colour,
             "dailyRentalPrice": base_price + random.choice([-40, -20, 0, 0, 20, 40]),
             "depositAmount": max(1000, round(base_price * 4, -2)),
-            "imageUrl": image_url(make, family, colour),
+            "imageUrl": photo["url"],
             "status": "MAINTENANCE" if random.random() < 0.08 else "AVAILABLE",
             "registrationDate": str(date.today() - timedelta(days=random.randint(120, 1400))),
             "lastMaintenanceDate": str(date.today() - timedelta(days=random.randint(5, 150))),
@@ -261,6 +259,7 @@ def seed_customers(api: Api) -> List[Dict[str, Any]]:
     customers = []
     demo = register_customer(api, DEMO_CUSTOMER)
     if demo:
+        api.call("PUT", f"/customers/{demo['id']}/email-verified?value=true")
         api.call("PUT", f"/customers/{demo['id']}/verified?value=true")
         demo = api.call("POST", f"/customers/{demo['id']}/top-up", {"amount": 50000})
         customers.append(demo)
@@ -281,6 +280,10 @@ def seed_customers(api: Api) -> List[Dict[str, Any]]:
         })
         if not customer:
             continue
+        # A real customer types the code from the welcome email; the seeder uses the
+        # administrators' support override instead. A few customers never confirm.
+        if random.random() < 0.92:
+            customer = api.call("PUT", f"/customers/{customer['id']}/email-verified?value=true") or customer
         if random.random() < 0.85:
             api.call("PUT", f"/customers/{customer['id']}/verified?value=true")
             customer = api.call("POST", f"/customers/{customer['id']}/top-up",
@@ -288,7 +291,8 @@ def seed_customers(api: Api) -> List[Dict[str, Any]]:
             customer["verifiedIdentity"] = True
         customers.append(customer)
     print(f"Registered {len(customers)} customers "
-          f"({sum(1 for c in customers if c.get('verifiedIdentity'))} verified)")
+          f"({sum(1 for c in customers if c.get('verifiedIdentity'))} with a verified licence, "
+          f"{sum(1 for c in customers if c.get('emailVerified'))} with a confirmed email)")
     return customers
 
 
@@ -318,7 +322,8 @@ def seed_bookings(api: Api, cars: List[Dict[str, Any]], customers: List[Dict[str
         bid = booking["bookingId"]
 
         roll = random.random()
-        if not customer.get("verifiedIdentity") or roll < 0.25:
+        ready = customer.get("verifiedIdentity") and customer.get("emailVerified")
+        if not ready or roll < 0.25:
             if roll < 0.08:
                 api.call("POST", f"/bookings/{bid}/cancel")
                 counts["cancelled"] += 1

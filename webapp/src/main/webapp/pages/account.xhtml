@@ -17,11 +17,39 @@
                 <h:link value="My bookings" outcome="/pages/orders.xhtml" styleClass="btn btn-outline"/>
             </div>
 
-            <h:panelGroup layout="block" styleClass="notice notice-warn" style="margin-bottom: 20px;"
-                          rendered="#{not accountBean.customer.verifiedIdentity}">
-                <b>Identity check pending.</b> Our team verifies your driving licence before your first payment.
-                You can already reserve cars; you will be able to pay once you are verified.
-            </h:panelGroup>
+            <!-- Checks needed before the first payment -->
+            <h:form styleClass="card checklist-card" rendered="#{not accountBean.customer.readyToPay}">
+                <h2>Before your first payment</h2>
+                <p class="card-lead">You can already reserve cars. Two checks are needed before you can pay.</p>
+                <ol class="checklist">
+                    <li class="#{accountBean.customer.emailVerified ? 'done' : 'todo'}">
+                        <span class="check-mark">#{accountBean.customer.emailVerified ? '✓' : '1'}</span>
+                        <div class="check-body">
+                            <b>Confirm your email address</b>
+                            <h:panelGroup rendered="#{accountBean.customer.emailVerified}">
+                                <div class="muted small">Done.</div>
+                            </h:panelGroup>
+                            <h:panelGroup rendered="#{not accountBean.customer.emailVerified}">
+                                <div class="muted small">Enter the 6-digit code we sent to #{accountBean.customer.email}.</div>
+                                <div class="row code-row">
+                                    <h:inputText id="emailCode" value="#{accountBean.emailCode}" styleClass="input code-input"
+                                                 pt:inputmode="numeric" pt:maxlength="6" pt:autocomplete="one-time-code"
+                                                 pt:placeholder="123456" pt:aria-label="Confirmation code"/>
+                                    <h:commandButton value="Confirm" action="#{accountBean.confirmEmail}" styleClass="btn btn-primary btn-sm"/>
+                                    <h:commandLink value="Send a new code" action="#{accountBean.resendEmailCode}" styleClass="small"/>
+                                </div>
+                            </h:panelGroup>
+                        </div>
+                    </li>
+                    <li class="#{accountBean.customer.verifiedIdentity ? 'done' : 'todo'}">
+                        <span class="check-mark">#{accountBean.customer.verifiedIdentity ? '✓' : '2'}</span>
+                        <div class="check-body">
+                            <b>Driving licence check by our team</b>
+                            <div class="muted small">#{accountBean.customer.verifiedIdentity ? 'Done.' : 'Nothing to do on your side: we check your licence and email you when it is done.'}</div>
+                        </div>
+                    </li>
+                </ol>
+            </h:form>
 
             <div class="layout-aside">
                 <div class="stack">
@@ -107,6 +135,11 @@
                         <h:commandButton value="Top up" action="#{accountBean.topUp}" styleClass="btn btn-primary btn-block"/>
                     </div>
                     <dl class="kv" style="margin-top: 22px;">
+                        <dt>Email</dt>
+                        <dd>
+                            <h:outputText value="Confirmed" styleClass="badge badge-completed" rendered="#{accountBean.customer.emailVerified}"/>
+                            <h:outputText value="Not confirmed" styleClass="badge badge-pending" rendered="#{not accountBean.customer.emailVerified}"/>
+                        </dd>
                         <dt>Identity</dt>
                         <dd>
                             <h:outputText value="Verified" styleClass="badge badge-completed" rendered="#{accountBean.customer.verifiedIdentity}"/>

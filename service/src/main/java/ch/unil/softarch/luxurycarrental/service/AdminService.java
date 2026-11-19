@@ -7,6 +7,7 @@ import ch.unil.softarch.luxurycarrental.domain.dto.PasswordChange;
 import ch.unil.softarch.luxurycarrental.domain.entities.Admin;
 import ch.unil.softarch.luxurycarrental.security.PasswordHasher;
 import ch.unil.softarch.luxurycarrental.security.Role;
+import ch.unil.softarch.luxurycarrental.service.VerificationCode.Purpose;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
@@ -26,7 +27,7 @@ public class AdminService {
     private EntityManager em;
 
     @Inject
-    private PasswordResetService resetCodes;
+    private VerificationCodeService codes;
 
     @Inject
     private Event<MailEvent> mail;
@@ -119,18 +120,18 @@ public class AdminService {
     @Transactional
     public void sendPasswordResetCode(String email) {
         findByEmail(email).ifPresent(a -> {
-            String code = resetCodes.issue(Role.ADMIN, a.getEmail());
+            String code = codes.issue(Purpose.PASSWORD_RESET, Role.ADMIN, a.getEmail());
             mail.fire(MailEvent.of(a.getEmail(), EmailTemplates.passwordResetCode(a.getName(), code,
-                    (int) PasswordResetService.VALIDITY.toMinutes())));
+                    (int) VerificationCodeService.PASSWORD_RESET_VALIDITY.toMinutes())));
         });
     }
 
     @Transactional(dontRollbackOn = DomainException.class)
     public void resetPassword(String email, String code, String newPassword) {
         Admin admin = findByEmail(email)
-                .orElseThrow(() -> new DomainException("This code has expired. Please ask for a new one."));
+                .orElseThrow(() -> new DomainException("This code is no longer valid. Please ask for a new one."));
         PasswordHasher.checkPolicy(newPassword);
-        resetCodes.consume(Role.ADMIN, admin.getEmail(), code);
+        codes.consume(Purpose.PASSWORD_RESET, Role.ADMIN, admin.getEmail(), code);
         admin.setPassword(PasswordHasher.hash(newPassword));
         mail.fire(MailEvent.of(admin.getEmail(), EmailTemplates.passwordChanged(admin.getName())));
     }

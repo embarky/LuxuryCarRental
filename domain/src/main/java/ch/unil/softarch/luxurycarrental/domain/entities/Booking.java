@@ -43,7 +43,6 @@ public class Booking implements Serializable {
     public static final Duration FREE_CANCELLATION = Duration.ofHours(48);
 
     @Id
-    @GeneratedValue
     @Column(length = 36)
     private UUID bookingId;
 
@@ -149,6 +148,10 @@ public class Booking implements Serializable {
         requireStatus(BookingStatus.PENDING, "Only an unpaid booking can be paid.");
         if (isPaymentOverdue(now)) {
             throw new DomainException("The payment window has passed; this booking has expired.");
+        }
+        if (!customer.isEmailVerified()) {
+            throw new DomainException("Please confirm your email address before paying. "
+                    + "Enter the code we sent you on your account page.");
         }
         if (!customer.isVerifiedIdentity()) {
             throw new DomainException("Your identity has not been verified yet. "

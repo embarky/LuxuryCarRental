@@ -19,7 +19,6 @@ public class Admin implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue
     @Column(length = 36)
     private UUID id;
 

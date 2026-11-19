@@ -85,7 +85,7 @@ public final class BookingPdf {
             addRow(bold, amountTable, "Rental total", EmailTemplates.chf(booking.getTotalCost()));
             addRow(bold, amountTable, "Deposit (refundable)", EmailTemplates.chf(booking.getDepositAmount()));
             addRow(bold, amountTable, "To pay", EmailTemplates.chf(booking.getAmountDue()));
-            addRow(bold, amountTable, "Status", booking.getBookingStatus() + " / payment " + booking.getPaymentStatus());
+            addRow(bold, amountTable, "Status", statusText(booking));
             doc.add(amountTable);
 
             doc.add(new Paragraph("Unpaid bookings are released after 24 hours. Paid bookings can be cancelled "
@@ -121,5 +121,23 @@ public final class BookingPdf {
 
     private static String nullSafe(String value) {
         return value == null || value.isBlank() ? "-" : value;
+    }
+
+    private static String statusText(Booking booking) {
+        String status = switch (booking.getBookingStatus()) {
+            case PENDING -> "Awaiting payment";
+            case CONFIRMED -> "Confirmed";
+            case ACTIVE -> "In progress";
+            case COMPLETED -> "Completed";
+            case CANCELLED -> "Cancelled";
+            case REJECTED -> "Rejected";
+            case EXPIRED -> "Expired";
+        };
+        String payment = switch (booking.getPaymentStatus()) {
+            case UNPAID -> "not paid";
+            case PAID -> "paid";
+            case REFUNDED -> "refunded";
+        };
+        return status + " (" + payment + ")";
     }
 }

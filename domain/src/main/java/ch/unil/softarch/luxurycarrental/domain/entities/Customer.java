@@ -31,7 +31,6 @@ public class Customer implements Serializable {
     public static final int MINIMUM_AGE = 18;
 
     @Id
-    @GeneratedValue
     @Column(length = 36)
     private UUID id;
 
@@ -60,6 +59,9 @@ public class Customer implements Serializable {
 
     @Column(nullable = false)
     private LocalDate dateOfBirth;
+
+    /** Set when the customer enters the code sent to their email address. Required to pay. */
+    private boolean emailVerified;
 
     /** Set by an administrator after checking the driving licence. Required to pay. */
     private boolean verifiedIdentity;
@@ -98,6 +100,11 @@ public class Customer implements Serializable {
     /** True if the driving licence is still valid on the given day. */
     public boolean hasValidLicenceOn(LocalDate day) {
         return drivingLicenseExpiryDate != null && !drivingLicenseExpiryDate.isBefore(day);
+    }
+
+    /** True when both checks needed before a first payment are done: email confirmed and licence checked. */
+    public boolean isReadyToPay() {
+        return emailVerified && verifiedIdentity;
     }
 
     /** Takes money from the balance; refuses if the balance is too low. */
@@ -150,6 +157,9 @@ public class Customer implements Serializable {
 
     public LocalDate getDateOfBirth() { return dateOfBirth; }
     public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
 
     public boolean isVerifiedIdentity() { return verifiedIdentity; }
     public void setVerifiedIdentity(boolean verifiedIdentity) { this.verifiedIdentity = verifiedIdentity; }

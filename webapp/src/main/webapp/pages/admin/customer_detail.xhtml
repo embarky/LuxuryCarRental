@@ -53,6 +53,16 @@
                             <h:outputText value="Verified" styleClass="badge badge-completed" rendered="#{customerAdminBean.customer.verifiedIdentity}"/>
                             <h:outputText value="To verify" styleClass="badge badge-pending" rendered="#{not customerAdminBean.customer.verifiedIdentity}"/>
                         </dd>
+                        <dt>Email</dt>
+                        <dd>
+                            <h:outputText value="Confirmed" styleClass="badge badge-completed" rendered="#{customerAdminBean.customer.emailVerified}"/>
+                            <h:panelGroup rendered="#{not customerAdminBean.customer.emailVerified}">
+                                <span class="badge badge-pending">Not confirmed</span>
+                                <h:commandLink value="Mark as confirmed" action="#{customerAdminBean.confirmEmail(customerAdminBean.customer)}"
+                                                   styleClass="small" style="margin-left: 8px;"
+                                                   onclick="return confirm('Only do this if you have confirmed the address another way. Continue?');"/>
+                            </h:panelGroup>
+                        </dd>
                     </dl>
                 </div>
                 <div class="card">

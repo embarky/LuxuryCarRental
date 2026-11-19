@@ -115,7 +115,8 @@ public class BookingService {
     public Booking pay(UUID id) {
         Booking booking = get(id);
         booking.pay(LocalDateTime.now());
-        mail.fire(MailEvent.of(booking.getCustomer().getEmail(), EmailTemplates.bookingPaid(booking)));
+        mail.fire(new MailEvent(booking.getCustomer().getEmail(), EmailTemplates.bookingPaid(booking),
+                BookingPdf.create(booking), "Booking-" + booking.getReference() + "-confirmed.pdf"));
         return booking;
     }
 
