@@ -1,7 +1,6 @@
 package ch.unil.softarch.luxurycarrental.service;
 
 import ch.unil.softarch.luxurycarrental.domain.entities.Admin;
-import ch.unil.softarch.luxurycarrental.service.EmailSender; // Assuming this is your email utility
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -95,20 +94,7 @@ public class AdminService {
      * Helper method to send a welcome email asynchronously to avoid blocking the transaction.
      */
     private void sendWelcomeEmail(Admin admin) {
-        new Thread(() -> {
-            try {
-                String to = admin.getEmail();
-                String subject = "Welcome to Luxury Car Rental Admin Panel";
-                String body = "Hi " + admin.getName() + ",\n\n" +
-                        "Your administrator account has been successfully created.\n" +
-                        "Username: " + admin.getUsername() + "\n" +
-                        "Please keep your password secure.\n\n" +
-                        "Best regards,\nLuxury Car Rental Team";
-                EmailSender.sendEmailAsync(to, subject, body);
-            } catch (Exception e) {
-                e.printStackTrace(); // Log error in production
-            }
-        }).start();
+        EmailSender.send(admin.getEmail(), EmailTemplates.adminWelcome(admin));
     }
 
     // -------------------------------------------------------------------------
@@ -247,12 +233,7 @@ public class AdminService {
         passwordResetCodes.put(admin.getEmail(), new VerificationCode(code, LocalDateTime.now()));
 
         // 4. Send the code via email.
-        String subject = "Admin Password Reset Code";
-        String body = "Dear " + admin.getName() + ",\n\n" +
-                "Your password reset code is: " + code + "\n" +
-                "This code will expire in 5 minutes.\n";
-
-        EmailSender.sendEmailAsync(admin.getEmail(), subject, body);
+        EmailSender.send(admin.getEmail(), EmailTemplates.passwordResetCode(admin.getName(), code, 5));
     }
 
     /**
@@ -300,6 +281,6 @@ public class AdminService {
         passwordResetCodes.remove(email);
 
         // 5. Send confirmation email.
-        EmailSender.sendEmailAsync(email, "Password Changed", "Your password has been changed.");
+        EmailSender.send(email, EmailTemplates.passwordChanged(admin.getName()));
     }
 }

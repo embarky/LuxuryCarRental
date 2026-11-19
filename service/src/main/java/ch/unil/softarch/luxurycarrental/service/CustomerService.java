@@ -2,7 +2,6 @@ package ch.unil.softarch.luxurycarrental.service;
 
 import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
 import ch.unil.softarch.luxurycarrental.domain.enums.BookingStatus;
-import ch.unil.softarch.luxurycarrental.service.EmailSender; // Assuming utility exists
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -75,18 +74,7 @@ public class CustomerService {
     }
 
     private void sendWelcomeEmail(Customer customer) {
-        new Thread(() -> {
-            try {
-                String to = customer.getEmail();
-                String subject = "Welcome to Luxury Car Rental!";
-                String body = "Hi " + customer.getFirstName() + ",\n\n" +
-                        "Your account has been successfully created.\n\n" +
-                        "Best regards,\nLuxury Car Rental Team";
-                EmailSender.sendEmailAsync(to, subject, body);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
+        EmailSender.send(customer.getEmail(), EmailTemplates.customerWelcome(customer));
     }
 
     // -------------------------------------------------------------------------
@@ -187,20 +175,18 @@ public class CustomerService {
 
     public void sendPasswordResetCode(String email) {
         // Check if customer exists
-        Long count = em.createQuery("SELECT COUNT(c) FROM Customer c WHERE c.email = :email", Long.class)
+        List<Customer> found = em.createQuery("SELECT c FROM Customer c WHERE c.email = :email", Customer.class)
                 .setParameter("email", email)
-                .getSingleResult();
+                .getResultList();
 
-        if (count == 0) throw new WebApplicationException("Customer not found", 404);
+        if (found.isEmpty()) throw new WebApplicationException("Customer not found", 404);
 
         // Generate Code
         String code = String.format("%06d", new Random().nextInt(999999));
         passwordResetCodes.put(email, new VerificationCode(code, LocalDateTime.now()));
 
         // Send Email
-        String subject = "Password Reset Code";
-        String body = "Your code is: " + code;
-        EmailSender.sendEmailAsync(email, subject, body);
+        EmailSender.send(email, EmailTemplates.passwordResetCode(found.get(0).getFirstName(), code, 5));
     }
 
     @Transactional
@@ -230,6 +216,6 @@ public class CustomerService {
         customer.setPassword(newPassword);
         passwordResetCodes.remove(email);
 
-        EmailSender.sendEmailAsync(email, "Password Changed", "Your password has been changed successfully.");
+        EmailSender.send(email, EmailTemplates.passwordChanged(customer.getFirstName()));
     }
 }

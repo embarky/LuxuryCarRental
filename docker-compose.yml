@@ -22,9 +22,21 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     ports:
       - "8080:8080"   # web UI and REST API
       - "4848:4848"   # Payara admin console
+
+  # Local mail server: catches every email the application sends.
+  # Open http://localhost:8025 to read them. Nothing is delivered to real inboxes.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: luxurycarrental-mailpit
+    environment:
+      MP_MAX_MESSAGES: 2000
+    ports:
+      - "8025:8025"   # web UI
 
   # Demo data: fills an empty database through the REST API, then exits
   seeder:

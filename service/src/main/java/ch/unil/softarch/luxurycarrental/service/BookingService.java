@@ -4,18 +4,12 @@ import ch.unil.softarch.luxurycarrental.domain.entities.*;
 import ch.unil.softarch.luxurycarrental.domain.enums.BookingStatus;
 import ch.unil.softarch.luxurycarrental.domain.enums.CarStatus;
 import ch.unil.softarch.luxurycarrental.domain.enums.PaymentStatus;
-import ch.unil.softarch.luxurycarrental.service.EmailSender; // Assuming utility
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
 
-import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -99,8 +93,9 @@ public class BookingService {
 
         // 6. Generate PDF & Email (Asynchronous)
         // Note: Fetch required data now to avoid LazyInitializationException in the async thread
-        byte[] pdfBytes = generateBookingPdf(booking, customer, car);
-        sendBookingCreationEmail(customer, pdfBytes);
+        byte[] pdfBytes = BookingPdf.create(booking);
+        EmailSender.sendWithPdf(customer.getEmail(), EmailTemplates.bookingCreated(booking),
+                pdfBytes, "Booking-" + EmailTemplates.reference(booking) + ".pdf");
 
         return booking;
     }
@@ -191,9 +186,7 @@ public class BookingService {
         booking.setPaymentStatus(PaymentStatus.SUCCESSFUL);
         booking.setBookingStatus(BookingStatus.CONFIRMED);
 
-        // Async Email
-        sendSimpleEmail(customer.getEmail(), "Booking Confirmed",
-                "Your booking " + booking.getBookingId() + " is confirmed.");
+        EmailSender.send(customer.getEmail(), EmailTemplates.bookingPaid(booking, amount));
 
         return booking;
     }
@@ -225,8 +218,7 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.CONFIRMED);
         booking.setPaymentStatus(PaymentStatus.SUCCESSFUL);
 
-        sendSimpleEmail(customer.getEmail(), "Booking Confirmed",
-                "Booking confirmed. Deposit deducted: " + deposit);
+        EmailSender.send(customer.getEmail(), EmailTemplates.bookingConfirmed(booking, deposit));
     }
 
     @Transactional
@@ -250,7 +242,7 @@ public class BookingService {
         }
 
         booking.setBookingStatus(BookingStatus.COMPLETED);
-        sendSimpleEmail(customer.getEmail(), "Booking Completed", "Thank you for riding with us.");
+        EmailSender.send(customer.getEmail(), EmailTemplates.bookingCompleted(booking, Math.max(remaining, 0)));
     }
 
     @Transactional
@@ -265,7 +257,8 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.CANCELLED);
         booking.setPaymentStatus(PaymentStatus.REFUNDED);
 
-        sendSimpleEmail(booking.getCustomer().getEmail(), "Booking Cancelled", "Your booking has been cancelled.");
+        EmailSender.send(booking.getCustomer().getEmail(),
+                EmailTemplates.bookingCancelled(booking, booking.getDepositAmount()));
     }
 
     @Transactional
@@ -280,49 +273,15 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.REJECTED);
 
         // Auto Refund if paid
+        double refund = 0;
         if (booking.getPaymentStatus() == PaymentStatus.SUCCESSFUL) {
             Customer c = booking.getCustomer();
-            c.setBalance(c.getBalance() + booking.getDepositAmount() + booking.getTotalCost());
+            refund = booking.getDepositAmount() + booking.getTotalCost();
+            c.setBalance(c.getBalance() + refund);
             booking.setPaymentStatus(PaymentStatus.REFUNDED);
         }
 
-        sendSimpleEmail(booking.getCustomer().getEmail(), "Booking Rejected", "Reason: " + reason);
+        EmailSender.send(booking.getCustomer().getEmail(), EmailTemplates.bookingRejected(booking, reason, refund));
         return booking;
-    }
-
-    // -------------------------------------------------------------------------
-    // Helpers (PDF & Email)
-    // -------------------------------------------------------------------------
-
-    private byte[] generateBookingPdf(Booking booking, Customer customer, Car car) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document doc = new Document(pdfDoc);
-
-            // Note: Accessing carType properties here is safe because 'car' is still attached
-            // to the persistence context within the transaction scope of createBooking
-            doc.add(new Paragraph("Booking Confirmation"));
-            doc.add(new Paragraph("Customer: " + customer.getFirstName()));
-            doc.add(new Paragraph("Car: " + car.getCarType().getBrand() + " " + car.getCarType().getModel()));
-            doc.add(new Paragraph("Total Cost: " + booking.getTotalCost()));
-
-            doc.close();
-            return baos.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return new byte[0];
-        }
-    }
-
-    private void sendBookingCreationEmail(Customer customer, byte[] pdfBytes) {
-        String htmlBody = "<h2>Booking Created</h2><p>Your booking is pending confirmation.</p>";
-        new Thread(() -> EmailSender.sendEmailWithAttachment(
-                customer.getEmail(), "Booking Created", htmlBody, pdfBytes
-        )).start();
-    }
-
-    private void sendSimpleEmail(String to, String subject, String body) {
-        new Thread(() -> EmailSender.sendEmail(to, subject, body)).start();
     }
 }

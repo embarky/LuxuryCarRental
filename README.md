@@ -21,7 +21,7 @@ Add screenshots to docs/screenshots/ and remove this comment:
 - Register, log in, and reset a forgotten password with an emailed verification code
 - Browse the fleet, filter and fuzzy-search cars, view detailed specs
 - Book a car for a date range, pay from an account balance (deposit + rental cost), cancel with refund, and track order status
-- Receive a booking confirmation email with a PDF attachment (iText)
+- Receive HTML emails at every step of a booking, with a PDF confirmation (iText)
 
 **Administrators**
 - Dashboard with fleet and booking overview
@@ -45,7 +45,7 @@ flowchart LR
     W -. uses .-> D
     S -. uses .-> D
     S -->|"JPA (JTA)<br/>jdbc/LuxuryCarRental"| DB[(MySQL 8)]
-    S -->|SMTP| M[[Email]]
+    S -->|SMTP| M[[Mailpit / SMTP]]
 ```
 
 | Module | Packaging | Responsibility |
@@ -78,7 +78,7 @@ stateDiagram-v2
 | Presentation | Jakarta Faces (JSF), PrimeFaces 14, CDI |
 | API | JAX-RS (Jersey), JSON-B |
 | Persistence | Jakarta Persistence (JPA), MySQL 8 |
-| Other | Jakarta Mail, iText 7 (PDF) |
+| Other | Jakarta Mail with HTML templates, iText 7 (PDF), Mailpit (local SMTP) |
 | Build / run | Maven multi-module, Docker, Payara Server 6 |
 | Testing | JUnit 5 |
 
@@ -103,6 +103,7 @@ The amounts are set with the `SEED_*` variables in `.env`.
 |---|---|
 | Web application | http://localhost:8080/LuxuryCarRental/ |
 | REST API | http://localhost:8080/luxurycarrental/api/cars |
+| Mailpit (all emails sent by the app) | http://localhost:8025 |
 | Payara admin console | http://localhost:4848 |
 
 Demo logins:
@@ -112,7 +113,10 @@ Demo logins:
 | Admin | `admin@example.com` | `admin123` |
 | Customer | `customer@example.com` | `customer123` |
 
-Emails are printed to the server log (`docker compose logs -f app`) unless you set `MAIL_USERNAME` and `MAIL_APP_PASSWORD` in `.env`.
+Every email the application sends (welcome, password reset codes, booking confirmations with a PDF
+attachment, ...) is caught by [Mailpit](https://mailpit.axllent.org/), a local mail server, and can be
+read at http://localhost:8025. Nothing is delivered to real inboxes. To send real emails, point the
+`MAIL_*` settings in `.env` to an SMTP provider.
 
 To start again from an empty database: `docker compose down -v && docker compose up --build`.
 
@@ -145,7 +149,7 @@ that has a `jdbc/LuxuryCarRental` data source.
 ├── webapp/                 # JSF web UI
 ├── docker/                 # Payara post-boot commands (data source, deployment)
 ├── Dockerfile              # multi-stage: Maven build -> Payara image
-├── docker-compose.yml      # MySQL + Payara + demo data seeder
+├── docker-compose.yml      # MySQL + Payara + Mailpit + demo data seeder
 ├── .env.example            # configuration template
 └── scripts/seeder/         # demo data generator (Python, Faker), run by Compose
 ```
