@@ -3,6 +3,7 @@
 [![CI](https://github.com/embarky/LuxuryCarRental/actions/workflows/ci.yml/badge.svg)](https://github.com/embarky/LuxuryCarRental/actions/workflows/ci.yml)
 ![Java 17](https://img.shields.io/badge/Java-17-blue)
 ![Jakarta EE 10](https://img.shields.io/badge/Jakarta%20EE-10-orange)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 A full-stack car rental platform built with **Jakarta EE 10** in a classic **three-layer architecture**:
 a JSF web front end calls a secured JAX-RS REST service, which keeps a shared domain model in MySQL
@@ -248,6 +249,11 @@ version on my own: the domain, service and web layers, at that time in three sep
 commit history, and reworked the project on my own with the help of an AI coding assistant (Claude):
 booking rules and money handling, API security, email confirmation, Flyway migrations, integration
 tests with Testcontainers, CI, demo data, a new user interface and the design records in `docs/adr`.
+
+## License
+
+The code is available under the [MIT License](LICENSE). The car photos are not covered by it: they keep
+their own free licences, listed in [docs/IMAGE_CREDITS.md](docs/IMAGE_CREDITS.md).
 
 ## Author
 
