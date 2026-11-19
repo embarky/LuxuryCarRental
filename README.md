@@ -1,8 +1,8 @@
 # Luxury Car Rental
 
-A full-stack luxury car rental platform built with **Jakarta EE 10** using a classic **three-layer architecture**:
-a JSF web front end talks to a JAX-RS REST service, which persists a shared JPA domain model in MySQL.
-Everything runs on Payara and starts with a single `docker compose up`.
+A full-stack car rental platform built with **Jakarta EE 10** in a classic **three-layer architecture**:
+a JSF web front end calls a secured JAX-RS REST service, which keeps a shared domain model in MySQL
+through JPA. Everything runs on Payara and starts with a single `docker compose up`.
 
 Developed for the *Software Architecture* course at the University of Lausanne (UNIL), 2025.
 
@@ -10,7 +10,7 @@ Developed for the *Software Architecture* course at the University of Lausanne (
 ## Screenshots
 Add screenshots to docs/screenshots/ and remove this comment:
 
-| Customer – car catalogue | Customer – booking | Admin – dashboard |
+| Car catalogue | Booking a car | Admin dashboard |
 |---|---|---|
 | ![](docs/screenshots/cars.png) | ![](docs/screenshots/booking.png) | ![](docs/screenshots/admin-dashboard.png) |
 -->
@@ -18,15 +18,18 @@ Add screenshots to docs/screenshots/ and remove this comment:
 ## Features
 
 **Customers**
-- Register, log in, and reset a forgotten password with an emailed verification code
-- Browse the fleet, filter and fuzzy-search cars, view detailed specs
-- Book a car for a date range, pay from an account balance (deposit + rental cost), cancel with refund, and track order status
-- Receive HTML emails at every step of a booking, with a PDF confirmation (iText)
+- Sign up with date of birth and driving licence (age, licence validity, email, phone and password policy are checked)
+- Search the fleet by text, category and price, and see **only the cars free on the chosen dates**
+- Live price on the car page (days × daily rate + refundable deposit), with the dates already booked
+- Reserve, then pay from an account balance within 24 hours; free cancellation until 48 hours before pick-up
+- *My account*: personal details, licence, balance top-up, password; *My bookings* with PDF confirmations
+- HTML email at every step (welcome, verification, booking received with PDF, paid, cancelled, rejected, expired, completed)
 
-**Administrators**
-- Dashboard with fleet and booking overview
-- Manage car types, individual cars, and customers (full CRUD)
-- Confirm, reject (with reason), and complete bookings
+**Administrators** (separate staff login, no public sign-up)
+- Dashboard: revenue of the month, fleet utilisation today, bookings awaiting payment, hand-overs and returns due
+- Bookings: hand over a car, take it back (deposit refunded), or reject with a reason (full refund if paid)
+- Customers: verify identity after checking the licence; customer page with balance and booking history
+- Fleet: cars and car types, maintenance status; administrator accounts
 
 ## Architecture
 
@@ -36,51 +39,70 @@ flowchart LR
 
     subgraph Payara["Payara Server 6"]
         direction LR
-        W["<b>webapp</b><br/>Presentation layer<br/>JSF · PrimeFaces · CDI beans"]
-        S["<b>service</b><br/>Business layer<br/>JAX-RS resources · services"]
-        W -->|"REST / JSON<br/>(JAX-RS client)"| S
+        W["<b>webapp</b><br/>Presentation layer<br/>JSF pages · CDI beans"]
+        S["<b>service</b><br/>Business layer<br/>REST resources · services · auth filter"]
+        W -->|"REST / JSON + Bearer token"| S
     end
 
-    D["<b>domain</b><br/>JPA entities · enums<br/>(shared JAR)"]
+    D["<b>domain</b><br/>Entities with business rules<br/>DTOs · value objects (shared JAR)"]
     W -. uses .-> D
     S -. uses .-> D
-    S -->|"JPA (JTA)<br/>jdbc/LuxuryCarRental"| DB[(MySQL 8)]
-    S -->|SMTP| M[[Mailpit / SMTP]]
+    S -->|"JPA (JTA)"| DB[(MySQL 8)]
+    S -->|"SMTP, after commit"| M[[Mailpit / SMTP]]
 ```
 
 | Module | Packaging | Responsibility |
 |---|---|---|
-| [`domain`](domain) | JAR | Entities (`Car`, `CarType`, `Customer`, `Admin`, `Booking`) and enums, shared by both other modules. Unit-tested with JUnit 5. |
-| [`service`](service) | WAR | REST API under `/luxurycarrental/api`; business rules (availability, booking state machine, payments, verification codes); persistence via JPA; email and PDF generation. |
-| [`webapp`](webapp) | WAR | JSF pages for customers and admins; REST clients that call the service layer. |
+| [`domain`](domain) | JAR | Entities (`Car`, `CarType`, `Customer`, `Admin`, `Booking`), the booking state machine, `DateRange` and money rules, request/response DTOs. Unit-tested without a database. |
+| [`service`](service) | WAR | REST API under `/luxurycarrental/api`: loads data, checks what needs the database (free dates, ownership), authenticates requests, sends emails and PDFs. |
+| [`webapp`](webapp) | WAR | JSF pages for customers and administrators; one API client that adds the user's token and shows the API's error messages. |
 
-The web layer never touches the database: every read and write goes through the REST API.
-That keeps the layers independent, so the service could serve a mobile app or a different front end without changes.
+The web layer never touches the database: every read and write goes through the REST API, so the
+service could serve a mobile app without changes.
 
 ### Booking lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> PENDING: customer books
-    PENDING --> CONFIRMED: customer pays / admin confirms
-    PENDING --> REJECTED: admin rejects
-    CONFIRMED --> REJECTED: admin rejects (refund)
+    [*] --> PENDING: customer reserves (nothing charged)
+    PENDING --> CONFIRMED: customer pays rental + deposit
     PENDING --> CANCELLED: customer cancels
-    CONFIRMED --> CANCELLED: customer cancels (deposit refunded)
-    CONFIRMED --> COMPLETED: admin completes (car released)
+    PENDING --> REJECTED: admin rejects
+    PENDING --> EXPIRED: not paid within 24 h
+    CONFIRMED --> CANCELLED: customer cancels ≥ 48 h before (full refund)
+    CONFIRMED --> REJECTED: admin rejects (full refund)
+    CONFIRMED --> ACTIVE: car handed over
+    ACTIVE --> COMPLETED: car returned (deposit refunded)
 ```
+
+Whatever path a booking takes, the customer ends up paying exactly the rental, or nothing.
+Each transition is a method of `Booking` that checks the current state and moves the money;
+[`BookingTest`](domain/src/test/java/ch/unil/softarch/luxurycarrental/domain/BookingTest.java) covers every path.
+
+### Design decisions
+
+| Decision | Why |
+|---|---|
+| Business rules in the domain objects (`booking.pay()`, `customer.debit()`) instead of setters called from services | The rules cannot be bypassed and are tested without a server or database. |
+| Availability computed from bookings by date, not stored as a car status | A car can be free next week while booked this week. `CarStatus` only means "in service" or "in maintenance". |
+| Car row locked (`SELECT … FOR UPDATE`) while checking for overlapping bookings, plus `@Version` | Two customers booking the same car at the same moment cannot both succeed. |
+| `BigDecimal` for all amounts | No rounding errors with money. |
+| Signed tokens (HMAC-SHA256) and a deny-by-default filter: endpoints are `@Public`, `@LoggedIn` (own data only) or admin-only | A new endpoint is never accidentally public; customers cannot read or change other customers' data. |
+| Passwords hashed with PBKDF2 (JDK, no extra library); reset codes hashed in the database, single use, 10 minutes | Nothing secret is stored or returned in clear text. |
+| Emails fired as CDI events observed `AFTER_SUCCESS` and sent on the managed executor | A rolled-back change never sends an email, and a slow mail server never slows down the API. |
+| One exception mapper: business errors → 400/409, missing data → 404, unexpected errors → 500 with a generic message | Clients get a clear JSON error; internal details stay in the server log. |
 
 ## Tech stack
 
 | Area | Technology |
 |---|---|
 | Language / platform | Java 17, Jakarta EE 10 |
-| Presentation | Jakarta Faces (JSF), PrimeFaces 14, CDI |
-| API | JAX-RS (Jersey), JSON-B |
-| Persistence | Jakarta Persistence (JPA), MySQL 8 |
+| Presentation | Jakarta Faces (JSF), CDI, one shared CSS design system |
+| API | JAX-RS, JSON-B, token authentication |
+| Persistence | Jakarta Persistence (JPA, EclipseLink), MySQL 8 |
 | Other | Jakarta Mail with HTML templates, iText 7 (PDF), Mailpit (local SMTP) |
-| Build / run | Maven multi-module, Docker, Payara Server 6 |
-| Testing | JUnit 5 |
+| Build / run | Maven multi-module, Docker Compose, Payara Server 6 |
+| Testing | JUnit 5 (domain rules, password hashing, tokens) |
 
 ## Quick start
 
@@ -89,34 +111,33 @@ Prerequisites: Docker with Docker Compose. No local JDK or Maven needed.
 ```bash
 git clone https://github.com/embarky/LuxuryCarRental.git
 cd LuxuryCarRental
-cp .env.example .env          # adjust passwords if you like
+cp .env.example .env          # adjust passwords and the token secret if you like
 docker compose up --build
 ```
 
 When Payara has finished deploying (about a minute), the `seeder` container fills the empty
-database with demo data through the REST API: admins, customers, car types, cars with
-brand- and colour-matched images, and bookings. Follow it with `docker compose logs -f seeder`.
-It runs only when the database is empty, so restarting the stack does not duplicate data.
-The amounts are set with the `SEED_*` variables in `.env`.
+database through the REST API: 13 luxury models, 40 cars, 60 customers and about 100 bookings in every
+state. Follow it with `docker compose logs -f seeder`. It runs only on an empty database.
 
 | What | URL |
 |---|---|
 | Web application | http://localhost:8080/LuxuryCarRental/ |
-| REST API | http://localhost:8080/luxurycarrental/api/cars |
+| Admin area | http://localhost:8080/LuxuryCarRental/pages/staff-login.xhtml |
+| REST API | http://localhost:8080/luxurycarrental/api/cars/search |
 | Mailpit (all emails sent by the app) | http://localhost:8025 |
-| Payara admin console | http://localhost:4848 |
 
 Demo logins:
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | `admin@example.com` | `admin123` |
-| Customer | `customer@example.com` | `customer123` |
+| Administrator | `admin@example.com` | `admin123` |
+| Customer (verified, CHF 50'000 balance) | `customer@example.com` | `customer123` |
 
-Every email the application sends (welcome, password reset codes, booking confirmations with a PDF
-attachment, ...) is caught by [Mailpit](https://mailpit.axllent.org/), a local mail server, and can be
-read at http://localhost:8025. Nothing is delivered to real inboxes. To send real emails, point the
-`MAIL_*` settings in `.env` to an SMTP provider.
+Every generated customer also uses the password `customer123`.
+
+All emails (welcome, reset codes, booking confirmations with PDF, ...) are caught by
+[Mailpit](https://mailpit.axllent.org/) and shown at http://localhost:8025; nothing reaches real inboxes.
+To send real emails, point the `MAIL_*` settings in `.env` to an SMTP provider.
 
 To start again from an empty database: `docker compose down -v && docker compose up --build`.
 
@@ -126,27 +147,33 @@ To start again from an empty database: `docker compose down -v && docker compose
 ./mvnw clean package      # builds domain -> service -> webapp and runs the tests
 ```
 
-The WARs end up in `service/target/` and `webapp/target/`, and can be deployed to any Jakarta EE 10 server
-that has a `jdbc/LuxuryCarRental` data source.
-
 ## REST API overview
 
-| Resource | Endpoints |
-|---|---|
-| `/cars` | `GET`, `GET /{id}`, `GET /search?q=&status=&minPrice=&maxPrice=&carTypeId=`, `POST`, `PUT /{id}`, `DELETE /{id}` |
-| `/cartypes` | `GET`, `GET /{id}`, `POST`, `PUT /{id}`, `DELETE /{id}` |
-| `/customers` | CRUD, login, email verification, password reset |
-| `/admins` | CRUD, `POST /login`, `POST /password-reset-code`, `PUT /reset-password` |
-| `/bookings` | CRUD, by customer / car, `POST /{id}/pay`, `PUT /{id}/confirm`, `POST /{id}/reject`, `PUT /{id}/cancel`, `PUT /{id}/complete` |
+Access: **public**, **own** (logged-in customer, own data only; administrators may access all), **admin**.
+
+| Endpoint | Access | Purpose |
+|---|---|---|
+| `POST /customers` · `POST /customers/login` | public | Sign up · log in (returns a token) |
+| `GET /cars/search?q=&category=&maxPrice=&start=&end=` | public | Bookable cars, free on the dates |
+| `GET /cars/{id}` · `GET /cars/{id}/booked` · `GET /cartypes` | public | Car details · dates already taken · models |
+| `GET/PUT /customers/{id}` · `POST /customers/{id}/top-up` · `PUT /customers/{id}/password` | own | Account |
+| `POST /bookings` · `GET /bookings/customer/{id}` · `GET /bookings/{id}/pdf` | own | Reserve · list · confirmation |
+| `POST /bookings/{id}/pay` · `POST /bookings/{id}/cancel` | own | Pay · cancel |
+| `POST /bookings/{id}/pick-up` · `/complete` · `/reject` | admin | Hand over · take back · reject with reason |
+| `GET /bookings?status=` · `GET /customers` · `PUT /customers/{id}/verified` | admin | Back office |
+| `POST/PUT/DELETE /cars`, `/cartypes` · `GET/POST/DELETE /admins` | admin | Fleet and staff |
+| `POST /admins/login` · `POST/PUT …/password-reset-code`, `…/reset-password` | public | Staff login · password reset |
+
+Errors are always JSON: `{"status": 409, "message": "This car is already booked for some of these dates."}`.
 
 ## Project structure
 
 ```
 .
 ├── pom.xml                 # parent POM (modules: domain, service, webapp)
-├── domain/                 # JPA entities + enums + unit tests
-├── service/                # REST API + business logic
-├── webapp/                 # JSF web UI
+├── domain/                 # entities with business rules, DTOs, unit tests
+├── service/                # REST API, services, security, emails, PDF
+├── webapp/                 # JSF pages, beans, API client, CSS
 ├── docker/                 # Payara post-boot commands (data source, deployment)
 ├── Dockerfile              # multi-stage: Maven build -> Payara image
 ├── docker-compose.yml      # MySQL + Payara + Mailpit + demo data seeder
@@ -156,18 +183,17 @@ that has a `jdbc/LuxuryCarRental` data source.
 
 ## Known limitations and next steps
 
-This is a course project, and some production concerns were deliberately left out:
-
-- Passwords are stored in plain text. Next step: hash them with bcrypt or Argon2.
-- Authentication is session-based in the web tier only, and the REST API is not secured. Next step: JWT or Jakarta Security.
-- Payment is simulated with an account balance; there is no payment provider.
-- Schema is generated by JPA at startup. Next step: migrations with Flyway.
-- Integration tests for the REST layer (e.g. Testcontainers + Arquillian) are not included yet.
+- Payments are simulated with an account balance; there is no payment provider.
+- The schema is generated by JPA at start-up. Next step: migrations with Flyway.
+- Integration tests of the REST layer against a real database (Testcontainers) are not included yet.
+- Tokens are stateless and cannot be revoked before they expire (8 hours).
 
 ## History
 
 The project was originally developed as three separate repositories (`LuxuryCarRentalDomain`,
-`LuxuryCarRentalService`, `LuxuryCarRentalWebapp`) and merged into this monorepo with the full commit history preserved.
+`LuxuryCarRentalService`, `LuxuryCarRentalWebapp`) and merged into this monorepo with the full commit
+history preserved. In November 2026 it was reworked with the help of an AI coding assistant (Claude):
+booking rules and money handling, API security, emails, demo data and a new user interface.
 
 ## Author
 
