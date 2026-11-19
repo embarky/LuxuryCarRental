@@ -110,13 +110,18 @@ abstract class ApiTest {
         return Http.get("/customers/" + c.id(), c.token()).json().getJsonNumber("balance").bigDecimalValue();
     }
 
-    /**
-     * The 6-digit code in the newest email to this address. Emails are sent in the background
-     * after the transaction commits, so this waits a little for it to arrive.
-     */
+    /** The email confirmation code in the newest "confirm your email" email to this address. */
     static String codeFromLastEmail(String to) {
+        return codeFromLastEmail(to, "confirm");
+    }
+
+    /**
+     * The 6-digit code in the newest email to this address whose subject contains the given word.
+     * Emails are sent in the background after the transaction commits, so this waits a little.
+     */
+    static String codeFromLastEmail(String to, String subjectWord) {
         String search = TestEnvironment.mailpitUrl() + "/api/v1/search?limit=1&query="
-                + URLEncoder.encode("to:\"" + to + "\"", StandardCharsets.UTF_8);
+                + URLEncoder.encode("to:\"" + to + "\" subject:\"" + subjectWord + "\"", StandardCharsets.UTF_8);
         for (int attempt = 0; attempt < 40; attempt++) {
             Http.Response found = Http.get(search, null);
             if (found.status() == 200 && !found.json().getJsonArray("messages").isEmpty()) {
@@ -130,7 +135,7 @@ abstract class ApiTest {
             }
             sleep(250);
         }
-        return fail("No email with a code arrived for " + to);
+        return fail("No email about \"" + subjectWord + "\" with a code arrived for " + to);
     }
 
     static void sleep(long millis) {

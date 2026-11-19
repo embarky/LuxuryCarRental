@@ -93,26 +93,12 @@ class BookingFlowIT extends ApiTest {
         TestCustomer c = register();
         assertEquals(200, Http.post("/customers/password-reset-code",
                 Json.createObjectBuilder().add("email", c.email()).build(), null).status());
-        String code = waitForResetCode(c.email());
+        String code = codeFromLastEmail(c.email(), "reset");
         var reset = Json.createObjectBuilder().add("email", c.email()).add("code", code)
                 .add("newPassword", "another2027").build();
         assertEquals(200, Http.put("/customers/reset-password", reset, null).status());
         assertFalse(login(c.email(), "another2027").isBlank());
         // A code works only once
         assertEquals(400, Http.put("/customers/reset-password", reset, null).status());
-    }
-
-    /** The reset email arrives after the welcome email; wait until it is the newest one. */
-    private static String waitForResetCode(String email) {
-        for (int i = 0; i < 40; i++) {
-            var search = Http.get(TestEnvironment.mailpitUrl() + "/api/v1/search?limit=1&query="
-                    + java.net.URLEncoder.encode("to:\"" + email + "\" subject:\"reset\"",
-                    java.nio.charset.StandardCharsets.UTF_8), null);
-            if (search.status() == 200 && !search.json().getJsonArray("messages").isEmpty()) {
-                return codeFromLastEmail(email);
-            }
-            sleep(250);
-        }
-        return fail("No reset email for " + email);
     }
 }
