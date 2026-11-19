@@ -52,7 +52,8 @@
                             <div class="spec"><span>0–100 km/h</span><strong>#{carDetailsBean.car.carType.acceleration} s</strong></div>
                             <div class="spec"><span>Top speed</span><strong>#{carDetailsBean.car.carType.maxSpeed} km/h</strong></div>
                             <div class="spec"><span>Seats</span><strong>#{carDetailsBean.car.carType.seats}</strong></div>
-                            <div class="spec"><span>Gearbox</span><strong>#{carDetailsBean.car.carType.transmission}</strong></div>
+                            <div class="spec"><span>Gearbox</span><strong>#{fmt.gearbox(carDetailsBean.car.carType.transmission)}</strong></div>
+                            <div class="spec"><span>Drive</span><strong>#{fmt.drive(carDetailsBean.car.carType.driveType)}</strong></div>
                         </div>
                         <h:panelGroup layout="block" styleClass="chips" style="margin-top: 16px;"
                                       rendered="#{not empty carDetailsBean.car.carType.features}">

@@ -11,8 +11,11 @@ import jakarta.inject.Named;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** The car catalogue with its filters (home page and Cars page). */
 @Named("carsBean")
@@ -99,8 +102,14 @@ public class CarsBean implements Serializable {
     }
 
     /** First cars of the catalogue, for the home page. */
+    /** Up to six cars for the home page, one per model so the row is varied. */
     public List<Car> getFeatured() {
-        return cars.size() <= 6 ? cars : cars.subList(0, 6);
+        Map<String, Car> oneEach = new LinkedHashMap<>();
+        for (Car car : cars) {
+            oneEach.putIfAbsent(car.getDisplayName(), car);
+        }
+        List<Car> featured = new ArrayList<>(oneEach.values());
+        return featured.size() <= 6 ? featured : featured.subList(0, 6);
     }
 
     public int getCarCount() { return cars.size(); }

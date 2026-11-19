@@ -2,6 +2,9 @@ package ch.unil.softarch.luxurycarrental.ui;
 
 import ch.unil.softarch.luxurycarrental.domain.enums.BookingStatus;
 import ch.unil.softarch.luxurycarrental.domain.enums.CarStatus;
+import ch.unil.softarch.luxurycarrental.domain.enums.DriveType;
+import ch.unil.softarch.luxurycarrental.domain.enums.PaymentStatus;
+import ch.unil.softarch.luxurycarrental.domain.enums.Transmission;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Named;
 
@@ -22,7 +25,7 @@ public class Format {
 
     public String chf(BigDecimal amount) {
         BigDecimal value = amount == null ? BigDecimal.ZERO : amount;
-        return String.format(Locale.ROOT, "CHF %,.2f", value).replace(',', '\'');
+        return String.format(Locale.ROOT, "CHF\u00a0%,.2f", value).replace(',', '\'');
     }
 
     public String date(LocalDate date) {
@@ -76,5 +79,43 @@ public class Format {
 
     public String carStatusClass(CarStatus status) {
         return status == CarStatus.MAINTENANCE ? "badge badge-rejected" : "badge badge-completed";
+    }
+
+    public String payment(PaymentStatus status) {
+        if (status == null) {
+            return "";
+        }
+        return switch (status) {
+            case UNPAID -> "Not paid";
+            case PAID -> "Paid";
+            case REFUNDED -> "Refunded";
+        };
+    }
+
+    public String gearbox(Transmission transmission) {
+        if (transmission == null) {
+            return "–";
+        }
+        return switch (transmission) {
+            case MANUAL -> "Manual";
+            case AUTOMATIC -> "Automatic";
+            case ELECTRIC -> "Single-speed (electric)";
+        };
+    }
+
+    public String drive(DriveType drive) {
+        if (drive == null) {
+            return "–";
+        }
+        return switch (drive) {
+            case FRONT_WHEEL_DRIVE -> "Front-wheel drive";
+            case REAR_WHEEL_DRIVE -> "Rear-wheel drive";
+            case FOUR_WHEEL_DRIVE -> "Four-wheel drive";
+            case ALL_WHEEL_DRIVE -> "All-wheel drive";
+            case PART_TIME_4WD -> "Part-time 4WD";
+            case ELECTRIC_FWD -> "Electric, front-wheel drive";
+            case ELECTRIC_RWD -> "Electric, rear-wheel drive";
+            case ELECTRIC_AWD -> "Electric, all-wheel drive";
+        };
     }
 }

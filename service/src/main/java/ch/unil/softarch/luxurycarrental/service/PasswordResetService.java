@@ -46,7 +46,7 @@ public class PasswordResetService {
         PasswordResetCode current = open(role, email).stream()
                 .filter(c -> c.isUsable(now))
                 .findFirst()
-                .orElseThrow(() -> new DomainException("This code has expired. Please ask for a new one."));
+                .orElseThrow(() -> new DomainException("This code is no longer valid (expired, already used or too many attempts). Please ask for a new one."));
         if (!PasswordHasher.matches(code == null ? "" : code.trim(), current.getCodeHash())) {
             current.recordFailedAttempt();
             throw new DomainException("The verification code is not correct.");

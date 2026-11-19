@@ -32,7 +32,7 @@
                                 <td>#{t.engine}</td>
                                 <td class="right">#{t.power} hp</td>
                                 <td class="right">#{t.seats}</td>
-                                <td>#{t.transmission}</td>
+                                <td>#{fmt.gearbox(t.transmission)}</td>
                                 <td class="right">#{carAdminBean.carsOfType(t)}</td>
                                 <td class="actions">
                                     <h:link value="Edit" outcome="/pages/admin/car_type_form.xhtml" styleClass="btn btn-outline btn-sm">

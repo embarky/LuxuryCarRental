@@ -65,9 +65,9 @@
                                 </td>
                                 <td class="right nowrap">
                                     #{fmt.chf(b.amountDue)}
-                                    <div class="cell-sub">#{b.paymentStatus}</div>
+                                    <div class="cell-sub">#{fmt.payment(b.paymentStatus)}</div>
                                 </td>
-                                <td class="actions">
+                                <td class="actions actions-stack">
                                     <a class="btn btn-outline btn-sm" href="#{request.contextPath}/booking-pdf?id=#{b.bookingId}" target="_blank">PDF</a>
                                     <h:commandButton value="Hand over" action="#{bookingAdminBean.pickUp(b.bookingId)}"
                                                      rendered="#{bookingAdminBean.canPickUp(b)}" styleClass="btn btn-primary btn-sm"/>

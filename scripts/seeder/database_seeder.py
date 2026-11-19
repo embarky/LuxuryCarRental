@@ -332,8 +332,11 @@ def seed_bookings(api: Api, cars: List[Dict[str, Any]], customers: List[Dict[str
         counts["paid"] += 1
 
         if start == today:
+            pick = random.random()
+            if pick < 0.4:
+                continue                               # paid, hand-over due today: shows on the dashboard
             api.call("POST", f"/bookings/{bid}/pick-up")
-            if random.random() < 0.6:
+            if pick < 0.75:
                 api.call("POST", f"/bookings/{bid}/complete")
                 counts["completed"] += 1
             else:

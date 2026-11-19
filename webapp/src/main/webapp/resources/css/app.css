@@ -146,8 +146,9 @@
 }
 
 .stat-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 600;
+    white-space: nowrap;
     margin-top: 2px;
 }
 
@@ -330,7 +331,7 @@
 }
 
 .table td {
-    padding: 14px 16px;
+    padding: 12px 14px;
     border-bottom: 1px solid #f0ece4;
     vertical-align: middle;
 }
@@ -350,6 +351,23 @@
 
 .table .actions form {
     display: inline;
+}
+
+/* Buttons stacked in narrow tables, so the column stays visible without scrolling. */
+.table .actions-stack {
+    white-space: normal;
+}
+
+.table .actions-stack > * {
+    display: block;
+    width: 100%;
+    min-width: 104px;
+    margin: 0 0 6px auto;
+    text-align: center;
+}
+
+.table .actions-stack > *:last-child {
+    margin-bottom: 0;
 }
 
 .cell-title {

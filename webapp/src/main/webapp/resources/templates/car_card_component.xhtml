@@ -19,7 +19,7 @@
                 <div class="car-card-specs">
                     <span>#{cc.attrs.car.carType.power} hp</span>
                     <span>#{cc.attrs.car.carType.seats} seats</span>
-                    <span>#{cc.attrs.car.carType.transmission}</span>
+                    <span>#{fmt.gearbox(cc.attrs.car.carType.transmission)}</span>
                     <span>#{cc.attrs.car.color}</span>
                 </div>
                 <div class="car-card-footer">
