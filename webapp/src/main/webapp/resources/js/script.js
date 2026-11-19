@@ -13,11 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Smooth scroll for navigation links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
+            // Leave PrimeFaces widgets (tabs, menus) alone: they handle their own "#..." links
+            if (this.closest('.ui-tabs-nav, .ui-menu')) return;
             const href = this.getAttribute('href');
-            if (href.length < 2) return;   // plain "#" links (e.g. PrimeFaces menu items)
-            const target = document.querySelector(href);
-            if (target) e.preventDefault();
+            if (href.length < 2) return;   // plain "#" links
+            // getElementById also accepts JSF ids that contain ":"
+            const target = document.getElementById(href.substring(1));
             if (target) {
+                e.preventDefault();
                 target.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'

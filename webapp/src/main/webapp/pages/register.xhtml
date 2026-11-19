@@ -23,30 +23,6 @@
 
         <p:tabView dynamic="true" cache="false">
 
-            <!-- Admin Registration -->
-            <p:tab title="Admin Registration">
-                <p:panelGrid columns="2" cellpadding="5">
-                    <h:outputLabel for="adminUsername" value="Username:"/>
-                    <h:inputText id="adminUsername" value="#{registerBean.adminUsername}" required="true"/>
-
-                    <h:outputLabel for="adminPassword" value="Password:"/>
-                    <h:inputSecret id="adminPassword" value="#{registerBean.adminPassword}" required="true"/>
-
-                    <h:outputLabel for="adminName" value="Name:"/>
-                    <h:inputText id="adminName" value="#{registerBean.adminName}" required="true"/>
-
-                    <h:outputLabel for="adminEmail" value="Email:"/>
-                    <h:inputText id="adminEmail" value="#{registerBean.adminEmail}" required="true"/>
-                </p:panelGrid>
-
-                <p:commandButton value="Register Admin"
-                                 action="#{registerBean.registerAdmin}"
-                                 update="registrationForm:globalMessages"
-                                 process="adminUsername adminPassword adminName adminEmail"
-                                 icon="pi pi-user-plus"
-                                 ajax="ture"/>
-            </p:tab>
-
             <!-- Customer Registration -->
             <p:tab title="Customer Registration">
                 <p:panelGrid columns="2" cellpadding="5">
@@ -91,9 +67,33 @@
                 <p:commandButton value="Register Customer"
                                  action="#{registerBean.registerCustomer}"
                                  update="registrationForm:globalMessages"
-                                 process="firstName lastName password email phoneNumber drivingLicenseNumber drivingLicenseExpiryDate age verifiedIdentity billingAddress balance"
+                                 process="@this firstName lastName password email phoneNumber drivingLicenseNumber drivingLicenseExpiryDate age verifiedIdentity billingAddress balance"
                                  icon="pi pi-user-plus"
-                                 ajax="ture"/>
+                                 ajax="true"/>
+            </p:tab>
+
+            <!-- Admin Registration -->
+            <p:tab title="Admin Registration">
+                <p:panelGrid columns="2" cellpadding="5">
+                    <h:outputLabel for="adminUsername" value="Username:"/>
+                    <h:inputText id="adminUsername" value="#{registerBean.adminUsername}" required="true"/>
+
+                    <h:outputLabel for="adminPassword" value="Password:"/>
+                    <h:inputSecret id="adminPassword" value="#{registerBean.adminPassword}" required="true"/>
+
+                    <h:outputLabel for="adminName" value="Name:"/>
+                    <h:inputText id="adminName" value="#{registerBean.adminName}" required="true"/>
+
+                    <h:outputLabel for="adminEmail" value="Email:"/>
+                    <h:inputText id="adminEmail" value="#{registerBean.adminEmail}" required="true"/>
+                </p:panelGrid>
+
+                <p:commandButton value="Register Admin"
+                                 action="#{registerBean.registerAdmin}"
+                                 update="registrationForm:globalMessages"
+                                 process="@this adminUsername adminPassword adminName adminEmail"
+                                 icon="pi pi-user-plus"
+                                 ajax="true"/>
             </p:tab>
 
         </p:tabView>
