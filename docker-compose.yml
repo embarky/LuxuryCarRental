@@ -26,5 +26,21 @@ services:
       - "8080:8080"   # web UI and REST API
       - "4848:4848"   # Payara admin console
 
+  # Demo data: fills an empty database through the REST API, then exits
+  seeder:
+    image: python:3.12-slim
+    container_name: luxurycarrental-seeder
+    env_file: .env
+    environment:
+      API_BASE_URL: http://app:8080/luxurycarrental/api
+    depends_on:
+      - app
+    volumes:
+      - ./scripts/seeder:/seeder:ro
+    command: >
+      sh -c "pip install -q --disable-pip-version-check -r /seeder/requirements.txt
+             && python -u /seeder/database_seeder.py"
+    restart: "no"
+
 volumes:
   db_data:

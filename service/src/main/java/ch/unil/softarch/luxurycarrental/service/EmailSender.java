@@ -75,7 +75,9 @@ public class EmailSender {
 
     public static void sendEmailWithAttachment(String to, String subject, String htmlBody, byte[] pdfAttachment) {
         if (!mailConfigured()) {
-            logInsteadOfSending(to, subject + " (with PDF attachment)", htmlBody);
+            // Only log the recipient here: booking emails are numerous and their body is HTML
+            System.out.println("[EmailSender] Mail not configured - booking email with PDF not sent. To: "
+                    + to + " | Subject: " + subject);
             return;
         }
         Properties props = new Properties();

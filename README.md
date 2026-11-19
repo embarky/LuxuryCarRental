@@ -93,7 +93,11 @@ cp .env.example .env          # adjust passwords if you like
 docker compose up --build
 ```
 
-When Payara has finished deploying (about a minute):
+When Payara has finished deploying (about a minute), the `seeder` container fills the empty
+database with demo data through the REST API: admins, customers, car types, cars with
+brand- and colour-matched images, and bookings. Follow it with `docker compose logs -f seeder`.
+It runs only when the database is empty, so restarting the stack does not duplicate data.
+The amounts are set with the `SEED_*` variables in `.env`.
 
 | What | URL |
 |---|---|
@@ -101,15 +105,16 @@ When Payara has finished deploying (about a minute):
 | REST API | http://localhost:8080/luxurycarrental/api/cars |
 | Payara admin console | http://localhost:4848 |
 
-Optional demo data (one admin, three car types and three cars):
+Demo logins:
 
-```bash
-./scripts/seed-demo-data.sh
-```
-
-Demo admin login: `admin@example.com` / `admin123`.
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@example.com` | `admin123` |
+| Customer | `customer@example.com` | `customer123` |
 
 Emails are printed to the server log (`docker compose logs -f app`) unless you set `MAIL_USERNAME` and `MAIL_APP_PASSWORD` in `.env`.
+
+To start again from an empty database: `docker compose down -v && docker compose up --build`.
 
 ### Building without Docker
 
@@ -140,9 +145,9 @@ that has a `jdbc/LuxuryCarRental` data source.
 ├── webapp/                 # JSF web UI
 ├── docker/                 # Payara post-boot commands (data source, deployment)
 ├── Dockerfile              # multi-stage: Maven build -> Payara image
-├── docker-compose.yml      # MySQL + Payara
+├── docker-compose.yml      # MySQL + Payara + demo data seeder
 ├── .env.example            # configuration template
-└── scripts/seed-demo-data.sh
+└── scripts/seeder/         # demo data generator (Python, Faker), run by Compose
 ```
 
 ## Known limitations and next steps
