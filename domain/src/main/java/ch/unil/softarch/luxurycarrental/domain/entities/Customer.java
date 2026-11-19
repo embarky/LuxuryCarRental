@@ -1,34 +1,38 @@
 package ch.unil.softarch.luxurycarrental.domain.entities;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import ch.unil.softarch.luxurycarrental.domain.DomainException;
+import ch.unil.softarch.luxurycarrental.domain.model.Money;
+import jakarta.json.bind.annotation.JsonbTransient;
 import jakarta.persistence.*;
+
 import java.io.Serializable;
-import java.util.Date;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Period;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Represents a Customer in the system.
+ * A customer who rents cars.
  * <p>
- * This class is a JPA Entity mapped to the "customer" table.
- * It implements Serializable to support object persistence and transmission.
+ * The account balance is a simulated wallet: rentals and deposits are taken from it and
+ * refunds go back to it. Money only moves through {@link #debit} and {@link #credit},
+ * so the balance can never become negative.
  * </p>
  */
 @Entity
 @Table(name = "customer")
 public class Customer implements Serializable {
 
-    // Unique identifier for serialization interoperability
     private static final long serialVersionUID = 1L;
 
-    /**
-     * Unique customer ID.
-     * Stored as binary(16) for efficient UUID storage in databases.
-     */
+    /** Minimum age to rent a car. */
+    public static final int MINIMUM_AGE = 18;
+
     @Id
     @GeneratedValue
     @Column(length = 36)
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private UUID id;
 
     @Column(nullable = false)
@@ -37,109 +41,85 @@ public class Customer implements Serializable {
     @Column(nullable = false)
     private String lastName;
 
-    /**
-     * Customer's email address, used for login and communication.
-     * Must be unique across the system.
-     */
     @Column(nullable = false, unique = true)
     private String email;
 
-    /**
-     * Encrypted login password.
-     */
+    /** Password hash (never the password itself). Never sent in JSON. */
+    @JsonbTransient
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false, unique = true)
     private String phoneNumber;
 
-    @Column(unique = true)
+    @Column(nullable = false, unique = true)
     private String drivingLicenseNumber;
 
-    /**
-     * Expiry date of the driving license.
-     * Using java.util.Date with @Temporal as per legacy JPA patterns,
-     * though LocalDate is preferred in newer Java versions.
-     */
-    @Temporal(TemporalType.DATE)
-    private Date drivingLicenseExpiryDate;
+    @Column(nullable = false)
+    private LocalDate drivingLicenseExpiryDate;
 
-    private int age;
+    @Column(nullable = false)
+    private LocalDate dateOfBirth;
 
-    /**
-     * Flag indicating if the customer's identity documents have been verified.
-     */
+    /** Set by an administrator after checking the driving licence. Required to pay. */
     private boolean verifiedIdentity;
 
     private String billingAddress;
 
-    /**
-     * Current account balance used for deposits or payments.
-     */
-    private double balance;
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal balance = Money.ZERO;
 
-    /**
-     * Timestamp when the customer account was created.
-     */
     @Column(nullable = false, updatable = false)
     private LocalDateTime creationDate;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
-
-    /**
-     * No-arg constructor required by JPA specifications.
-     */
     public Customer() {
-        // ID and creationDate initialization moved to @PrePersist callback
     }
 
-    /**
-     * Constructor to initialize a customer with specific details.
-     * Note: ID and creationDate are handled automatically by lifecycle callbacks.
-     */
-    public Customer(UUID id, String firstName, String lastName, String email, String password,
-                    String phoneNumber, String drivingLicenseNumber, Date drivingLicenseExpiryDate,
-                    int age, boolean verifiedIdentity, String billingAddress, double balance) {
-        // We typically ignore the passed ID in favor of auto-generation,
-        // or you can set it if you are migrating existing data.
-        this.id = id;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.password = password;
-        this.phoneNumber = phoneNumber;
-        this.drivingLicenseNumber = drivingLicenseNumber;
-        this.drivingLicenseExpiryDate = drivingLicenseExpiryDate;
-        this.age = age;
-        this.verifiedIdentity = verifiedIdentity;
-        this.billingAddress = billingAddress;
-        this.balance = balance;
-        // creationDate is not set here, it will be set on persist
-    }
-
-    // -------------------------------------------------------------------------
-    // Lifecycle Callbacks
-    // -------------------------------------------------------------------------
-
-    /**
-     * Executed automatically before the entity is persisted (inserted) into the database.
-     * Generates a unique ID if missing and records the creation timestamp.
-     */
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) {
-            this.id = UUID.randomUUID();
+        if (id == null) {
+            id = UUID.randomUUID();
         }
-        if (this.creationDate == null) {
-            this.creationDate = LocalDateTime.now();
+        if (creationDate == null) {
+            creationDate = LocalDateTime.now();
         }
+        balance = Money.of(balance);
     }
 
-    // Note: No @PreUpdate needed as there is no 'updatedAt' field in this class.
+    // -------------------------------------------------------------------------
+    // Business rules
+    // -------------------------------------------------------------------------
+
+    /** Age in full years today; computed from the date of birth so it never goes stale. */
+    public int getAge() {
+        return dateOfBirth == null ? 0 : Period.between(dateOfBirth, LocalDate.now()).getYears();
+    }
+
+    /** True if the driving licence is still valid on the given day. */
+    public boolean hasValidLicenceOn(LocalDate day) {
+        return drivingLicenseExpiryDate != null && !drivingLicenseExpiryDate.isBefore(day);
+    }
+
+    /** Takes money from the balance; refuses if the balance is too low. */
+    public void debit(BigDecimal amount) {
+        BigDecimal value = Money.requirePositive(amount, "The amount");
+        if (balance.compareTo(value) < 0) {
+            throw new DomainException("Insufficient balance: CHF " + value + " needed, CHF " + balance
+                    + " available. Please top up your account.");
+        }
+        balance = Money.of(balance.subtract(value));
+    }
+
+    /** Adds money to the balance (top-up or refund). */
+    public void credit(BigDecimal amount) {
+        if (amount == null || amount.signum() == 0) {
+            return;
+        }
+        balance = Money.of(balance.add(Money.requirePositive(amount, "The amount")));
+    }
 
     // -------------------------------------------------------------------------
-    // Getters and Setters
+    // Getters and setters
     // -------------------------------------------------------------------------
 
     public UUID getId() { return id; }
@@ -151,11 +131,13 @@ public class Customer implements Serializable {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
 
+    public String getFullName() { return firstName + " " + lastName; }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
     public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public void setPassword(String passwordHash) { this.password = passwordHash; }
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
@@ -163,11 +145,11 @@ public class Customer implements Serializable {
     public String getDrivingLicenseNumber() { return drivingLicenseNumber; }
     public void setDrivingLicenseNumber(String drivingLicenseNumber) { this.drivingLicenseNumber = drivingLicenseNumber; }
 
-    public Date getDrivingLicenseExpiryDate() { return drivingLicenseExpiryDate; }
-    public void setDrivingLicenseExpiryDate(Date drivingLicenseExpiryDate) { this.drivingLicenseExpiryDate = drivingLicenseExpiryDate; }
+    public LocalDate getDrivingLicenseExpiryDate() { return drivingLicenseExpiryDate; }
+    public void setDrivingLicenseExpiryDate(LocalDate drivingLicenseExpiryDate) { this.drivingLicenseExpiryDate = drivingLicenseExpiryDate; }
 
-    public int getAge() { return age; }
-    public void setAge(int age) { this.age = age; }
+    public LocalDate getDateOfBirth() { return dateOfBirth; }
+    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
 
     public boolean isVerifiedIdentity() { return verifiedIdentity; }
     public void setVerifiedIdentity(boolean verifiedIdentity) { this.verifiedIdentity = verifiedIdentity; }
@@ -175,33 +157,25 @@ public class Customer implements Serializable {
     public String getBillingAddress() { return billingAddress; }
     public void setBillingAddress(String billingAddress) { this.billingAddress = billingAddress; }
 
-    public double getBalance() { return balance; }
-    public void setBalance(double balance) { this.balance = balance; }
+    public BigDecimal getBalance() { return balance; }
+    /** For JSON and JPA only; business code uses {@link #debit} and {@link #credit}. */
+    public void setBalance(BigDecimal balance) { this.balance = Money.of(balance); }
 
     public LocalDateTime getCreationDate() { return creationDate; }
-    // Setter typically not used for creationDate as it's immutable after creation
     public void setCreationDate(LocalDateTime creationDate) { this.creationDate = creationDate; }
 
-    // -------------------------------------------------------------------------
-    // Overrides
-    // -------------------------------------------------------------------------
+    @Override
+    public boolean equals(Object o) {
+        return this == o || (o instanceof Customer other && id != null && id.equals(other.id));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 
     @Override
     public String toString() {
-        return "Customer{" +
-                "id=" + id +
-                ", firstName='" + firstName + '\'' +
-                ", lastName='" + lastName + '\'' +
-                ", email='" + email + '\'' +
-                ", password='" + (password != null ? "***" : null) + '\'' +
-                ", phoneNumber='" + phoneNumber + '\'' +
-                ", drivingLicenseNumber='" + drivingLicenseNumber + '\'' +
-                ", drivingLicenseExpiryDate=" + drivingLicenseExpiryDate +
-                ", age=" + age +
-                ", verifiedIdentity=" + verifiedIdentity +
-                ", billingAddress='" + billingAddress + '\'' +
-                ", balance=" + balance +
-                ", creationDate=" + creationDate +
-                '}';
+        return "Customer{id=" + id + ", name='" + getFullName() + "', email='" + email + "'}";
     }
 }

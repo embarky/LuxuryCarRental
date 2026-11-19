@@ -5,8 +5,9 @@ import ch.unil.softarch.luxurycarrental.domain.entities.Booking;
 import ch.unil.softarch.luxurycarrental.domain.entities.Car;
 import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 
 /**
@@ -25,6 +26,7 @@ public final class EmailTemplates {
     }
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("EEE d MMM yyyy, HH:mm", Locale.ENGLISH);
     private static final String GOLD = "#C9A55A";
 
     private EmailTemplates() {
@@ -76,6 +78,18 @@ public final class EmailTemplates {
     }
 
     // -------------------------------------------------------------------------
+    // Accounts (continued)
+    // -------------------------------------------------------------------------
+
+    public static Email identityVerified(Customer customer) {
+        return new Email("Your identity has been verified",
+                layout("You are ready to drive",
+                        paragraph("Hi " + esc(customer.getFirstName()) + ", our team has checked your driving "
+                                + "licence. You can now pay for your bookings online.")
+                                + paragraph("Enjoy the ride!")));
+    }
+
+    // -------------------------------------------------------------------------
     // Bookings
     // -------------------------------------------------------------------------
 
@@ -83,100 +97,96 @@ public final class EmailTemplates {
         return new Email("Booking received – " + carName(booking.getCar()),
                 layout("We have received your booking",
                         paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", thank you for "
-                                + "choosing us. Your booking is <b>pending</b>: pay it from your bookings "
-                                + "page, or our team will confirm it shortly.")
+                                + "choosing us. Your booking is <b>reserved but not paid</b>. Please pay "
+                                + chf(booking.getAmountDue()) + " (rental and refundable deposit) from "
+                                + "<i>My bookings</i> before " + dateTime(booking.getPaymentDeadline())
+                                + ", otherwise the car is released.")
                                 + bookingDetails(booking)
-                                + paragraph("Your booking confirmation is attached as a PDF.")));
+                                + paragraph("Your booking summary is attached as a PDF.")));
     }
 
-    public static Email bookingPaid(Booking booking, double amountPaid) {
+    public static Email bookingPaid(Booking booking) {
         return new Email("Payment received – booking confirmed",
                 layout("Your booking is confirmed",
                         paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", we have received "
-                                + "your payment of <b>" + chf(amountPaid) + "</b> (rental and deposit).")
+                                + "your payment of <b>" + chf(booking.getAmountDue()) + "</b> (rental and "
+                                + "deposit). The car is yours on the dates below.")
                                 + bookingDetails(booking)
-                                + paragraph("The deposit is returned after the car is brought back.")));
+                                + paragraph("Free cancellation until 48 hours before pick-up. The deposit "
+                                + "is returned when you bring the car back. Please bring your driving licence.")));
     }
 
-    public static Email bookingConfirmed(Booking booking, double depositCharged) {
-        return new Email("Booking confirmed – " + carName(booking.getCar()),
-                layout("Your booking is confirmed",
-                        paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", good news: our "
-                                + "team has confirmed your booking. A deposit of <b>" + chf(depositCharged)
-                                + "</b> has been taken from your account balance.")
-                                + bookingDetails(booking)
-                                + paragraph("Please bring your driving licence when you pick up the car.")));
-    }
-
-    public static Email bookingCompleted(Booking booking, double amountCharged) {
-        String charge = amountCharged > 0
-                ? "The remaining amount of <b>" + chf(amountCharged) + "</b> has been taken from your balance."
-                : "No further payment is due.";
+    public static Email bookingCompleted(Booking booking, BigDecimal depositRefund) {
         return new Email("Thank you for driving with us",
                 layout("Your rental is complete",
                         paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", thank you for "
-                                + "returning the " + esc(carName(booking.getCar())) + ". " + charge)
+                                + "returning the " + esc(carName(booking.getCar())) + ". Your deposit of <b>"
+                                + chf(depositRefund) + "</b> has been returned to your balance.")
                                 + bookingDetails(booking)
                                 + paragraph("We hope to see you again soon.")));
     }
 
-    public static Email bookingCancelled(Booking booking, double refund) {
+    public static Email bookingCancelled(Booking booking, BigDecimal refund) {
         return new Email("Booking cancelled",
                 layout("Your booking has been cancelled",
                         paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", your booking has "
                                 + "been cancelled."
-                                + (refund > 0 ? " <b>" + chf(refund) + "</b> has been returned to your balance." : ""))
+                                + (refund.signum() > 0 ? " <b>" + chf(refund) + "</b> has been returned to your balance."
+                                : " Nothing had been charged."))
                                 + bookingDetails(booking)));
     }
 
-    public static Email bookingRejected(Booking booking, String reason, double refund) {
+    public static Email bookingRejected(Booking booking, String reason, BigDecimal refund) {
         return new Email("Your booking could not be accepted",
                 layout("Booking not accepted",
                         paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", unfortunately we "
                                 + "cannot accept your booking.")
-                                + (reason == null || reason.isBlank() ? ""
-                                : details(row("Reason", esc(reason))))
-                                + (refund > 0 ? paragraph("<b>" + chf(refund) + "</b> has been returned to "
+                                + details(row("Reason", esc(reason)))
+                                + (refund.signum() > 0 ? paragraph("<b>" + chf(refund) + "</b> has been returned to "
                                 + "your balance.") : "")
                                 + bookingDetails(booking)
                                 + paragraph("Feel free to choose another car or other dates.")));
+    }
+
+    public static Email bookingExpired(Booking booking) {
+        return new Email("Booking expired – " + carName(booking.getCar()),
+                layout("Your booking has expired",
+                        paragraph("Hi " + esc(booking.getCustomer().getFirstName()) + ", your booking was not "
+                                + "paid in time, so the car has been released. Nothing was charged.")
+                                + bookingDetails(booking)
+                                + paragraph("If you still want this car, you can book it again if the dates are free.")));
     }
 
     // -------------------------------------------------------------------------
     // Shared helpers (also used for the PDF confirmation)
     // -------------------------------------------------------------------------
 
-    /** Short booking reference shown to customers, e.g. "A1B2C3D4". */
-    public static String reference(Booking booking) {
-        return booking.getBookingId() == null ? "-"
-                : booking.getBookingId().toString().substring(0, 8).toUpperCase(Locale.ROOT);
-    }
-
     public static String carName(Car car) {
         return car.getCarType().getBrand() + " " + car.getCarType().getModel();
-    }
-
-    public static long rentalDays(Booking booking) {
-        return ChronoUnit.DAYS.between(booking.getStartDate(), booking.getEndDate()) + 1;
     }
 
     public static String date(java.time.LocalDate date) {
         return date == null ? "-" : DATE.format(date);
     }
 
-    public static String chf(double amount) {
-        return String.format(Locale.ROOT, "CHF %,.2f", amount).replace(',', '\'');
+    public static String dateTime(LocalDateTime time) {
+        return time == null ? "-" : DATE_TIME.format(time);
+    }
+
+    public static String chf(BigDecimal amount) {
+        BigDecimal value = amount == null ? BigDecimal.ZERO : amount;
+        return String.format(Locale.ROOT, "CHF %,.2f", value).replace(',', '\'');
     }
 
     private static String bookingDetails(Booking booking) {
         Car car = booking.getCar();
         return details(
-                row("Reference", reference(booking)),
+                row("Reference", booking.getReference()),
                 row("Car", esc(carName(car))),
                 row("Licence plate", esc(car.getLicensePlate())),
                 row("Pick-up", date(booking.getStartDate())),
                 row("Return", date(booking.getEndDate())),
-                row("Duration", rentalDays(booking) + (rentalDays(booking) == 1 ? " day" : " days")),
+                row("Duration", booking.getDays() + (booking.getDays() == 1 ? " day" : " days")),
                 row("Rental", chf(booking.getTotalCost())),
                 row("Deposit", chf(booking.getDepositAmount())),
                 row("Status", String.valueOf(booking.getBookingStatus())));

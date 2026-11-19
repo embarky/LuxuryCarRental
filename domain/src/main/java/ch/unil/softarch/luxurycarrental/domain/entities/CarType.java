@@ -2,7 +2,6 @@ package ch.unil.softarch.luxurycarrental.domain.entities;
 
 import ch.unil.softarch.luxurycarrental.domain.enums.DriveType;
 import ch.unil.softarch.luxurycarrental.domain.enums.Transmission;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.io.Serializable;
@@ -25,7 +24,6 @@ public class CarType implements Serializable {
     @Id
     @GeneratedValue
     @Column(length = 36)
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private UUID id;  // Unique identifier
 
     @Column(nullable = false)

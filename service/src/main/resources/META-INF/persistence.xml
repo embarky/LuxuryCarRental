@@ -10,11 +10,12 @@
         <class>ch.unil.softarch.luxurycarrental.domain.entities.CarType</class>
         <class>ch.unil.softarch.luxurycarrental.domain.entities.Car</class>
         <class>ch.unil.softarch.luxurycarrental.domain.entities.Booking</class>
+        <class>ch.unil.softarch.luxurycarrental.service.PasswordResetCode</class>
         <exclude-unlisted-classes>false</exclude-unlisted-classes>
         <properties>
             <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
-            <property name="eclipselink.logging.level" value="FINEST"/>
-            <property name="eclipselink.logging.parameters" value="true"/>
+            <property name="eclipselink.logging.level" value="WARNING"/>
+            <property name="eclipselink.logging.parameters" value="false"/>
         </properties>
     </persistence-unit>
 </persistence>

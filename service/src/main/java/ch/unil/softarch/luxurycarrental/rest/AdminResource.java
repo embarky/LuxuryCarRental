@@ -1,111 +1,94 @@
 package ch.unil.softarch.luxurycarrental.rest;
 
+import ch.unil.softarch.luxurycarrental.domain.dto.*;
 import ch.unil.softarch.luxurycarrental.domain.entities.Admin;
+import ch.unil.softarch.luxurycarrental.security.Caller;
+import ch.unil.softarch.luxurycarrental.security.Public;
+import ch.unil.softarch.luxurycarrental.security.Role;
+import ch.unil.softarch.luxurycarrental.security.TokenService;
 import ch.unil.softarch.luxurycarrental.service.AdminService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+/** Administrator accounts. Everything except login and password reset is for administrators. */
 @Path("/admins")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class AdminResource {
 
     @Inject
-    private AdminService adminService;
+    private AdminService admins;
 
-    // Get all admins
-    @GET
-    public List<Admin> getAllAdmins() {
-        return adminService.getAllAdmins();
-    }
+    @Inject
+    private TokenService tokens;
 
-    // Get one admin by ID
-    @GET
-    @Path("/{id}")
-    public Admin getAdmin(@PathParam("id") UUID id) {
-        return adminService.getAdmin(id);
-    }
+    @Context
+    private SecurityContext security;
 
-    // Add new admin
-    @POST
-    public Admin addAdmin(Admin admin) {
-        return adminService.addAdmin(admin);
-    }
-
-    // Update existing admin
-    @PUT
-    @Path("/{id}")
-    public Admin updateAdmin(@PathParam("id") UUID id, Admin update) {
-        return adminService.updateAdmin(id, update);
-    }
-
-    // Delete admin
-    @DELETE
-    @Path("/{id}")
-    public boolean removeAdmin(@PathParam("id") UUID id) {
-        return adminService.removeAdmin(id);
-    }
-
-    // Login
     @POST
     @Path("/login")
-    public Response loginAdmin(Map<String, String> loginRequest) {
-        String email = loginRequest.get("email");
-        String password = loginRequest.get("password");
-
-        if (email == null || password == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Email and password are required")
-                    .build();
-        }
-
-        try {
-            Admin admin = adminService.authenticate(email, password);
-            return Response.ok(admin).build();
-        } catch (WebApplicationException e) {
-            return Response.status(e.getResponse().getStatus())
-                    .entity(e.getMessage())
-                    .build();
-        }
+    @Public
+    public AdminSession login(LoginRequest request) {
+        Admin admin = admins.authenticate(request == null ? null : request.email,
+                request == null ? null : request.password);
+        AdminSession session = new AdminSession();
+        session.token = tokens.issue(Role.ADMIN, admin.getId());
+        session.admin = admin;
+        return session;
     }
 
-    /**
-     * Request a password reset code to be sent to admin's email
-     */
+    @GET
+    public List<Admin> getAll() {
+        return admins.getAll();
+    }
+
+    @GET
+    @Path("/{id}")
+    public Admin get(@PathParam("id") UUID id) {
+        return admins.get(id);
+    }
+
+    @POST
+    public Admin create(AdminRequest request) {
+        return admins.create(request);
+    }
+
+    @DELETE
+    @Path("/{id}")
+    public MessageResponse remove(@PathParam("id") UUID id) {
+        admins.remove(id, Caller.of(security).id());
+        return new MessageResponse("Administrator deleted.");
+    }
+
+    @PUT
+    @Path("/me/password")
+    public MessageResponse changeOwnPassword(PasswordChange change) {
+        admins.changePassword(Caller.of(security).id(), change);
+        return new MessageResponse("Your password has been changed.");
+    }
+
     @POST
     @Path("/password-reset-code")
-    public Response sendPasswordResetCodeByEmail(Map<String, String> body) {
-        String email = body.get("email");
-        if (email == null) {
-            throw new WebApplicationException("Email is required", 400);
-        }
-
-        adminService.sendAdminPasswordResetCodeByEmail(email);
-        return Response.ok(Map.of("message", "Verification code sent to admin email")).build();
+    @Public
+    public MessageResponse sendResetCode(PasswordReset request) {
+        admins.sendPasswordResetCode(request == null ? null : request.email);
+        return new MessageResponse("If an account exists for this email, a code has been sent to it.");
     }
 
-    /**
-     * Reset admin password using verification code
-     */
     @PUT
     @Path("/reset-password")
-    public Response resetPasswordWithCodeByEmail(Map<String, String> body) {
-        String email = body.get("email");
-        String code = body.get("code");
-        String newPassword = body.get("newPassword");
-
-        if (email == null || code == null || newPassword == null) {
-            throw new WebApplicationException("Missing required fields", 400);
+    @Public
+    public MessageResponse resetPassword(PasswordReset request) {
+        if (request == null) {
+            throw new BadRequestException();
         }
-
-        adminService.resetAdminPasswordWithCodeByEmail(email, code, newPassword);
-        return Response.ok(Map.of("message", "Admin password reset successfully")).build();
+        admins.resetPassword(request.email, request.code, request.newPassword);
+        return new MessageResponse("Your password has been reset. You can now log in.");
     }
-
 }

@@ -1,221 +1,245 @@
 package ch.unil.softarch.luxurycarrental.service;
 
+import ch.unil.softarch.luxurycarrental.api.Errors;
+import ch.unil.softarch.luxurycarrental.domain.DomainException;
+import ch.unil.softarch.luxurycarrental.domain.dto.PasswordChange;
+import ch.unil.softarch.luxurycarrental.domain.dto.ProfileUpdate;
+import ch.unil.softarch.luxurycarrental.domain.dto.RegistrationRequest;
 import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
-import ch.unil.softarch.luxurycarrental.domain.enums.BookingStatus;
+import ch.unil.softarch.luxurycarrental.domain.model.Money;
+import ch.unil.softarch.luxurycarrental.security.PasswordHasher;
+import ch.unil.softarch.luxurycarrental.security.Role;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.WebApplicationException;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
- * Service class for managing Customer accounts.
- * <p>
- * Handles registration, authentication, profile updates, and password resets using JPA.
- * </p>
+ * Customer accounts: registration, profile, balance top-ups, identity verification and passwords.
  */
 @ApplicationScoped
 public class CustomerService {
 
+    /** Largest single top-up of the simulated wallet. */
+    private static final BigDecimal MAX_TOP_UP = new BigDecimal("100000");
+
     @PersistenceContext(unitName = "LuxuryCarRentalPU")
     private EntityManager em;
 
-    // Temporary storage for reset codes (Consider moving to DB in production)
-    private final Map<String, VerificationCode> passwordResetCodes = new ConcurrentHashMap<>();
+    @Inject
+    private PasswordResetService resetCodes;
 
-    private static class VerificationCode {
-        String code;
-        LocalDateTime createdAt;
-        VerificationCode(String code, LocalDateTime createdAt) {
-            this.code = code;
-            this.createdAt = createdAt;
+    @Inject
+    private Event<MailEvent> mail;
+
+    // -------------------------------------------------------------------------
+    // Registration and login
+    // -------------------------------------------------------------------------
+
+    @Transactional
+    public Customer register(RegistrationRequest request) {
+        if (request == null) {
+            throw new DomainException("Registration data is missing.");
         }
+        Customer c = new Customer();
+        c.setFirstName(Validation.required(request.firstName, "First name"));
+        c.setLastName(Validation.required(request.lastName, "Last name"));
+        c.setEmail(Validation.email(request.email));
+        PasswordHasher.checkPolicy(request.password);
+        c.setPassword(PasswordHasher.hash(request.password));
+        c.setPhoneNumber(Validation.phone(request.phoneNumber));
+        c.setDateOfBirth(Validation.required(request.dateOfBirth, "Date of birth"));
+        c.setDrivingLicenseNumber(Validation.required(request.drivingLicenseNumber, "Driving licence number"));
+        c.setDrivingLicenseExpiryDate(Validation.required(request.drivingLicenseExpiryDate, "Driving licence expiry date"));
+        c.setBillingAddress(Validation.optional(request.billingAddress));
+        c.setVerifiedIdentity(false);
+        c.setBalance(Money.ZERO);
+
+        if (c.getAge() < Customer.MINIMUM_AGE) {
+            throw new DomainException("You must be at least " + Customer.MINIMUM_AGE + " years old to rent a car.");
+        }
+        if (!c.getDrivingLicenseExpiryDate().isAfter(LocalDate.now())) {
+            throw new DomainException("Your driving licence has expired.");
+        }
+        checkUnique(null, c.getEmail(), c.getPhoneNumber(), c.getDrivingLicenseNumber());
+
+        em.persist(c);
+        mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.customerWelcome(c)));
+        return c;
+    }
+
+    /** The customer with these credentials, or 401. The same message for both cases avoids user enumeration. */
+    public Customer authenticate(String email, String password) {
+        return findByEmail(email)
+                .filter(c -> PasswordHasher.matches(password, c.getPassword()))
+                .orElseThrow(() -> Errors.unauthorized("Invalid email or password."));
     }
 
     // -------------------------------------------------------------------------
-    // Create
+    // Queries
     // -------------------------------------------------------------------------
+
+    public Customer get(UUID id) {
+        Customer c = em.find(Customer.class, id);
+        if (c == null) {
+            throw Errors.notFound("Customer not found.");
+        }
+        return c;
+    }
+
+    public List<Customer> getAll() {
+        return em.createQuery("SELECT c FROM Customer c ORDER BY c.creationDate DESC", Customer.class).getResultList();
+    }
+
+    public Optional<Customer> findByEmail(String email) {
+        if (email == null) {
+            return Optional.empty();
+        }
+        return em.createQuery("SELECT c FROM Customer c WHERE LOWER(c.email) = :email", Customer.class)
+                .setParameter("email", email.trim().toLowerCase())
+                .getResultStream()
+                .findFirst();
+    }
+
+    // -------------------------------------------------------------------------
+    // Changes
+    // -------------------------------------------------------------------------
+
+    @Transactional
+    public Customer updateProfile(UUID id, ProfileUpdate update) {
+        Customer c = get(id);
+        if (update == null) {
+            return c;
+        }
+        if (update.firstName != null) c.setFirstName(Validation.required(update.firstName, "First name"));
+        if (update.lastName != null) c.setLastName(Validation.required(update.lastName, "Last name"));
+        if (update.billingAddress != null) c.setBillingAddress(Validation.optional(update.billingAddress));
+        if (update.phoneNumber != null) {
+            String phone = Validation.phone(update.phoneNumber);
+            checkUnique(id, null, phone, null);
+            c.setPhoneNumber(phone);
+        }
+        if (update.drivingLicenseNumber != null) {
+            String licence = Validation.required(update.drivingLicenseNumber, "Driving licence number");
+            if (!licence.equals(c.getDrivingLicenseNumber())) {
+                checkUnique(id, null, null, licence);
+                c.setDrivingLicenseNumber(licence);
+                c.setVerifiedIdentity(false);   // a new licence has to be checked again
+            }
+        }
+        if (update.drivingLicenseExpiryDate != null) {
+            if (!update.drivingLicenseExpiryDate.isAfter(LocalDate.now())) {
+                throw new DomainException("The new driving licence expiry date must be in the future.");
+            }
+            c.setDrivingLicenseExpiryDate(update.drivingLicenseExpiryDate);
+        }
+        return c;
+    }
+
+    /** Adds money to the simulated wallet (there is no real payment provider). */
+    @Transactional
+    public Customer topUp(UUID id, BigDecimal amount) {
+        BigDecimal value = Money.requirePositive(amount, "The top-up amount");
+        if (value.compareTo(MAX_TOP_UP) > 0) {
+            throw new DomainException("A single top-up is limited to CHF " + MAX_TOP_UP + ".");
+        }
+        Customer c = get(id);
+        c.credit(value);
+        return c;
+    }
+
+    @Transactional
+    public Customer setVerified(UUID id, boolean verified) {
+        Customer c = get(id);
+        boolean newlyVerified = verified && !c.isVerifiedIdentity();
+        c.setVerifiedIdentity(verified);
+        if (newlyVerified) {
+            mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.identityVerified(c)));
+        }
+        return c;
+    }
+
+    @Transactional
+    public void changePassword(UUID id, PasswordChange change) {
+        Customer c = get(id);
+        if (change == null || !PasswordHasher.matches(change.currentPassword, c.getPassword())) {
+            throw new DomainException("Your current password is not correct.");
+        }
+        PasswordHasher.checkPolicy(change.newPassword);
+        c.setPassword(PasswordHasher.hash(change.newPassword));
+        mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.passwordChanged(c.getFirstName())));
+    }
 
     /**
-     * Registers a new customer.
-     * Checks for duplicate email, phone, and license number.
+     * Deletes an account without any booking. Accounts with a booking history are kept,
+     * because the bookings must stay traceable.
      */
     @Transactional
-    public Customer addCustomer(Customer customer) {
-        // Efficient Duplicate Checks using JP-QL
-        Long emailCount = em.createQuery("SELECT COUNT(c) FROM Customer c WHERE c.email = :email", Long.class)
-                .setParameter("email", customer.getEmail())
+    public void remove(UUID id) {
+        Customer c = get(id);
+        Long bookings = em.createQuery("SELECT COUNT(b) FROM Booking b WHERE b.customer.id = :id", Long.class)
+                .setParameter("id", id)
                 .getSingleResult();
-        if (emailCount > 0) throw new WebApplicationException("Email already exists", 400);
-
-        Long licenseCount = em.createQuery("SELECT COUNT(c) FROM Customer c WHERE c.drivingLicenseNumber = :license", Long.class)
-                .setParameter("license", customer.getDrivingLicenseNumber())
-                .getSingleResult();
-        if (licenseCount > 0) throw new WebApplicationException("Driving license number already exists", 400);
-
-        Long phoneCount = em.createQuery("SELECT COUNT(c) FROM Customer c WHERE c.phoneNumber = :phone", Long.class)
-                .setParameter("phone", customer.getPhoneNumber())
-                .getSingleResult();
-        if (phoneCount > 0) throw new WebApplicationException("Phone number already exists", 400);
-
-        // ID and CreationDate handled by entity @PrePersist
-        em.persist(customer);
-
-        // Send confirmation email asynchronously
-        sendWelcomeEmail(customer);
-
-        return customer;
-    }
-
-    private void sendWelcomeEmail(Customer customer) {
-        EmailSender.send(customer.getEmail(), EmailTemplates.customerWelcome(customer));
-    }
-
-    // -------------------------------------------------------------------------
-    // Read
-    // -------------------------------------------------------------------------
-
-    public Customer getCustomer(UUID id) {
-        Customer customer = em.find(Customer.class, id);
-        if (customer == null) throw new WebApplicationException("Customer not found", 404);
-        return customer;
-    }
-
-    public List<Customer> getAllCustomers() {
-        return em.createQuery("SELECT c FROM Customer c", Customer.class).getResultList();
-    }
-
-    // -------------------------------------------------------------------------
-    // Update
-    // -------------------------------------------------------------------------
-
-    @Transactional
-    public Customer updateCustomer(UUID id, Customer update) {
-        Customer existing = em.find(Customer.class, id);
-        if (existing == null) throw new WebApplicationException("Customer not found", 404);
-
-        if (update.getFirstName() != null) existing.setFirstName(update.getFirstName());
-        if (update.getLastName() != null) existing.setLastName(update.getLastName());
-        if (update.getEmail() != null) existing.setEmail(update.getEmail());
-        if (update.getPhoneNumber() != null) existing.setPhoneNumber(update.getPhoneNumber());
-        if (update.getDrivingLicenseNumber() != null) existing.setDrivingLicenseNumber(update.getDrivingLicenseNumber());
-        if (update.getDrivingLicenseExpiryDate() != null) existing.setDrivingLicenseExpiryDate(update.getDrivingLicenseExpiryDate());
-        if (update.getAge() > 0) existing.setAge(update.getAge());
-
-        // Boolean fields need careful handling (isVerifiedIdentity)
-        // Assuming we always trust the update object here, or check if it was set explicitly
-        existing.setVerifiedIdentity(update.isVerifiedIdentity());
-
-        if (update.getBillingAddress() != null) existing.setBillingAddress(update.getBillingAddress());
-        if (update.getBalance() != 0.0) existing.setBalance(update.getBalance());
-
-        return existing;
-    }
-
-    // -------------------------------------------------------------------------
-    // Delete
-    // -------------------------------------------------------------------------
-
-    @Transactional
-    public boolean removeCustomer(UUID id) {
-        Customer customer = em.find(Customer.class, id);
-        if (customer == null) {
-            throw new WebApplicationException("Customer not found", 404);
+        if (bookings > 0) {
+            throw DomainException.conflict("This customer has " + bookings + " booking(s) in their history "
+                    + "and cannot be deleted.");
         }
-
-        // Check for active bookings using JP-QL
-        // We shouldn't delete a customer if they have PENDING or CONFIRMED bookings.
-        Long activeBookings = em.createQuery(
-                        "SELECT COUNT(b) FROM Booking b WHERE b.customer.id = :custId AND b.bookingStatus IN :statuses", Long.class)
-                .setParameter("custId", id)
-                .setParameter("statuses", List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED))
-                .getSingleResult();
-
-        if (activeBookings > 0) {
-            throw new WebApplicationException("Cannot delete customer with active bookings", 400);
-        }
-
-        em.remove(customer);
-        return true;
+        em.remove(c);
     }
 
     // -------------------------------------------------------------------------
-    // Authentication
+    // Password reset
     // -------------------------------------------------------------------------
 
-    public Customer authenticate(String email, String password) {
-        try {
-            return em.createQuery("SELECT c FROM Customer c WHERE c.email = :email AND c.password = :password", Customer.class)
-                    .setParameter("email", email)
-                    .setParameter("password", password)
-                    .getSingleResult();
-        } catch (Exception e) {
-            throw new WebApplicationException("Invalid email or password", 401);
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Verification & Password Reset
-    // -------------------------------------------------------------------------
-
+    /** Sends a code by email. Unknown addresses get the same answer, to not reveal who has an account. */
     @Transactional
-    public boolean verifyCustomer(UUID id) {
-        Customer customer = em.find(Customer.class, id);
-        if (customer == null) return false;
-
-        customer.setVerifiedIdentity(true);
-        return true;
-    }
-
     public void sendPasswordResetCode(String email) {
-        // Check if customer exists
-        List<Customer> found = em.createQuery("SELECT c FROM Customer c WHERE c.email = :email", Customer.class)
-                .setParameter("email", email)
-                .getResultList();
-
-        if (found.isEmpty()) throw new WebApplicationException("Customer not found", 404);
-
-        // Generate Code
-        String code = String.format("%06d", new Random().nextInt(999999));
-        passwordResetCodes.put(email, new VerificationCode(code, LocalDateTime.now()));
-
-        // Send Email
-        EmailSender.send(email, EmailTemplates.passwordResetCode(found.get(0).getFirstName(), code, 5));
+        findByEmail(email).ifPresent(c -> {
+            String code = resetCodes.issue(Role.CUSTOMER, c.getEmail());
+            mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.passwordResetCode(c.getFirstName(), code,
+                    (int) PasswordResetService.VALIDITY.toMinutes())));
+        });
     }
 
-    @Transactional
-    public void resetPasswordWithCode(String email, String code, String newPassword) {
-        // Get customer entity (Managed)
-        Customer customer;
-        try {
-            customer = em.createQuery("SELECT c FROM Customer c WHERE c.email = :email", Customer.class)
-                    .setParameter("email", email)
-                    .getSingleResult();
-        } catch (Exception e) {
-            throw new WebApplicationException("Customer not found", 404);
+    @Transactional(dontRollbackOn = DomainException.class)
+    public void resetPassword(String email, String code, String newPassword) {
+        Customer c = findByEmail(email)
+                .orElseThrow(() -> new DomainException("This code has expired. Please ask for a new one."));
+        PasswordHasher.checkPolicy(newPassword);
+        resetCodes.consume(Role.CUSTOMER, c.getEmail(), code);
+        c.setPassword(PasswordHasher.hash(newPassword));
+        mail.fire(MailEvent.of(c.getEmail(), EmailTemplates.passwordChanged(c.getFirstName())));
+    }
+
+    // -------------------------------------------------------------------------
+
+    private void checkUnique(UUID self, String email, String phone, String licence) {
+        if (email != null && taken("LOWER(c.email)", email.toLowerCase(), self)) {
+            throw DomainException.conflict("An account with this email already exists.");
         }
-
-        // Verify Code
-        VerificationCode stored = passwordResetCodes.get(email);
-        if (stored == null) throw new WebApplicationException("No verification code found", 400);
-
-        if (Duration.between(stored.createdAt, LocalDateTime.now()).toMinutes() >= 5) {
-            passwordResetCodes.remove(email);
-            throw new WebApplicationException("Verification code expired", 400);
+        if (phone != null && taken("c.phoneNumber", phone, self)) {
+            throw DomainException.conflict("This phone number is already used by another account.");
         }
+        if (licence != null && taken("c.drivingLicenseNumber", licence, self)) {
+            throw DomainException.conflict("This driving licence number is already registered.");
+        }
+    }
 
-        if (!stored.code.equals(code)) throw new WebApplicationException("Invalid verification code", 400);
-
-        // Update Password
-        customer.setPassword(newPassword);
-        passwordResetCodes.remove(email);
-
-        EmailSender.send(email, EmailTemplates.passwordChanged(customer.getFirstName()));
+    private boolean taken(String field, String value, UUID self) {
+        var query = em.createQuery("SELECT COUNT(c) FROM Customer c WHERE " + field + " = :v"
+                        + (self == null ? "" : " AND c.id <> :self"), Long.class)
+                .setParameter("v", value);
+        if (self != null) {
+            query.setParameter("self", self);
+        }
+        return query.getSingleResult() > 0;
     }
 }

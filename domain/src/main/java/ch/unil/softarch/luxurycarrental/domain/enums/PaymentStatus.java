@@ -1,11 +1,11 @@
 package ch.unil.softarch.luxurycarrental.domain.enums;
 
-
+/** What happened to the customer's money for a booking. */
 public enum PaymentStatus {
-    PENDING,           // Payment is pending / not yet made
-    SUCCESSFUL,        // Payment completed successfully
-    FAILED,            // Payment failed
-    REFUNDED,          // Payment refunded
-    PARTIALLY_REFUNDED,// Partially refunded (optional)
-    CANCELLED          // Order cancelled (optional)
+    /** Nothing has been charged. */
+    UNPAID,
+    /** Rental and deposit have been charged. */
+    PAID,
+    /** Everything that was charged has been returned. */
+    REFUNDED
 }

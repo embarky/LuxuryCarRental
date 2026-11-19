@@ -3,8 +3,11 @@ package ch.unil.softarch.luxurycarrental.service;
 import ch.unil.softarch.luxurycarrental.domain.entities.Booking;
 import ch.unil.softarch.luxurycarrental.domain.entities.Car;
 import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
+import com.itextpdf.io.font.constants.StandardFonts;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
@@ -42,49 +45,52 @@ public final class BookingPdf {
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             PdfDocument pdf = new PdfDocument(new PdfWriter(out));
+            PdfFont bold = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
             Document doc = new Document(pdf, PageSize.A4);
             doc.setMargins(48, 48, 48, 48);
 
             // Header
             doc.add(new Paragraph("LUXURY CAR RENTAL")
-                    .setFontSize(18).setBold().setFontColor(GOLD).setCharacterSpacing(2));
+                    .setFontSize(18).setFont(bold).setFontColor(GOLD).setCharacterSpacing(2));
             doc.add(new Paragraph("Booking confirmation")
-                    .setFontSize(24).setBold().setFontColor(DARK).setMarginTop(4));
-            doc.add(new Paragraph("Reference " + EmailTemplates.reference(booking)
+                    .setFontSize(24).setFont(bold).setFontColor(DARK).setMarginTop(4));
+            doc.add(new Paragraph("Reference " + booking.getReference()
                     + "  ·  Issued " + LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE))
                     .setFontSize(10).setFontColor(GREY).setMarginBottom(16));
 
             // Customer
-            doc.add(section("Customer"));
+            doc.add(section("Customer", bold));
             Table customerTable = table();
-            addRow(customerTable, "Name", customer.getFirstName() + " " + customer.getLastName());
-            addRow(customerTable, "Email", customer.getEmail());
-            addRow(customerTable, "Driving licence", nullSafe(customer.getDrivingLicenseNumber()));
+            addRow(bold, customerTable, "Name", customer.getFirstName() + " " + customer.getLastName());
+            addRow(bold, customerTable, "Email", customer.getEmail());
+            addRow(bold, customerTable, "Driving licence", nullSafe(customer.getDrivingLicenseNumber()));
             doc.add(customerTable);
 
             // Rental
-            doc.add(section("Rental"));
-            long days = EmailTemplates.rentalDays(booking);
+            doc.add(section("Rental", bold));
+            long days = booking.getDays();
             Table rentalTable = table();
-            addRow(rentalTable, "Car", EmailTemplates.carName(car));
-            addRow(rentalTable, "Licence plate", nullSafe(car.getLicensePlate()));
-            addRow(rentalTable, "Colour", nullSafe(car.getColor()));
-            addRow(rentalTable, "Pick-up", EmailTemplates.date(booking.getStartDate()));
-            addRow(rentalTable, "Return", EmailTemplates.date(booking.getEndDate()));
-            addRow(rentalTable, "Duration", days + (days == 1 ? " day" : " days"));
+            addRow(bold, rentalTable, "Car", EmailTemplates.carName(car));
+            addRow(bold, rentalTable, "Licence plate", nullSafe(car.getLicensePlate()));
+            addRow(bold, rentalTable, "Colour", nullSafe(car.getColor()));
+            addRow(bold, rentalTable, "Pick-up", EmailTemplates.date(booking.getStartDate()));
+            addRow(bold, rentalTable, "Return", EmailTemplates.date(booking.getEndDate()));
+            addRow(bold, rentalTable, "Duration", days + (days == 1 ? " day" : " days"));
             doc.add(rentalTable);
 
             // Amounts
-            doc.add(section("Amounts"));
+            doc.add(section("Amounts", bold));
             Table amountTable = table();
-            addRow(amountTable, "Daily rate", EmailTemplates.chf(car.getDailyRentalPrice()));
-            addRow(amountTable, "Rental total", EmailTemplates.chf(booking.getTotalCost()));
-            addRow(amountTable, "Deposit (refundable)", EmailTemplates.chf(booking.getDepositAmount()));
-            addRow(amountTable, "Status", booking.getBookingStatus() + " / payment " + booking.getPaymentStatus());
+            addRow(bold, amountTable, "Daily rate", EmailTemplates.chf(car.getDailyRentalPrice()));
+            addRow(bold, amountTable, "Rental total", EmailTemplates.chf(booking.getTotalCost()));
+            addRow(bold, amountTable, "Deposit (refundable)", EmailTemplates.chf(booking.getDepositAmount()));
+            addRow(bold, amountTable, "To pay", EmailTemplates.chf(booking.getAmountDue()));
+            addRow(bold, amountTable, "Status", booking.getBookingStatus() + " / payment " + booking.getPaymentStatus());
             doc.add(amountTable);
 
-            doc.add(new Paragraph("Please bring your driving licence and this confirmation when you pick up "
-                    + "the car. The deposit is returned after the car has been checked on return.")
+            doc.add(new Paragraph("Unpaid bookings are released after 24 hours. Paid bookings can be cancelled "
+                    + "free of charge until 48 hours before pick-up. Please bring your driving licence when you "
+                    + "pick up the car; the deposit is returned after the car has been checked on return.")
                     .setFontSize(10).setFontColor(GREY).setMarginTop(24));
 
             doc.close();
@@ -95,20 +101,20 @@ public final class BookingPdf {
         }
     }
 
-    private static Paragraph section(String title) {
+    private static Paragraph section(String title, PdfFont bold) {
         return new Paragraph(title.toUpperCase())
-                .setFontSize(11).setBold().setFontColor(GOLD).setMarginTop(14).setMarginBottom(6);
+                .setFontSize(11).setFont(bold).setFontColor(GOLD).setMarginTop(14).setMarginBottom(6);
     }
 
     private static Table table() {
         return new Table(UnitValue.createPercentArray(new float[]{35, 65})).useAllAvailableWidth();
     }
 
-    private static void addRow(Table table, String label, String value) {
+    private static void addRow(PdfFont bold, Table table, String label, String value) {
         table.addCell(new Cell().add(new Paragraph(label).setFontColor(GREY).setFontSize(10))
                 .setBorder(Border.NO_BORDER)
                 .setBorderBottom(new SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f)).setPadding(6));
-        table.addCell(new Cell().add(new Paragraph(value).setBold().setFontSize(11))
+        table.addCell(new Cell().add(new Paragraph(value).setFont(bold).setFontSize(11))
                 .setBorder(Border.NO_BORDER)
                 .setBorderBottom(new SolidBorder(ColorConstants.LIGHT_GRAY, 0.5f)).setPadding(6));
     }

@@ -1,27 +1,29 @@
 package ch.unil.softarch.luxurycarrental.service;
 
-import ch.unil.softarch.luxurycarrental.domain.entities.*;
+import ch.unil.softarch.luxurycarrental.api.Errors;
+import ch.unil.softarch.luxurycarrental.domain.DomainException;
+import ch.unil.softarch.luxurycarrental.domain.dto.BookingRequest;
+import ch.unil.softarch.luxurycarrental.domain.entities.Booking;
+import ch.unil.softarch.luxurycarrental.domain.entities.Car;
+import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
 import ch.unil.softarch.luxurycarrental.domain.enums.BookingStatus;
-import ch.unil.softarch.luxurycarrental.domain.enums.CarStatus;
-import ch.unil.softarch.luxurycarrental.domain.enums.PaymentStatus;
+import ch.unil.softarch.luxurycarrental.domain.model.DateRange;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.WebApplicationException;
 
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Service class for managing Bookings.
- * <p>
- * Handles the complete lifecycle of a rental booking, including creation,
- * payments, confirmations, completions, and cancellations.
- * Ensures data consistency across Car, Customer, and Booking entities.
- * </p>
+ * Booking workflow. The rules of each step live in {@link Booking}; this service loads the
+ * data, checks what needs the database (free dates, ownership), and sends the emails.
  */
 @ApplicationScoped
 public class BookingService {
@@ -29,259 +31,146 @@ public class BookingService {
     @PersistenceContext(unitName = "LuxuryCarRentalPU")
     private EntityManager em;
 
+    @Inject
+    private CarService cars;
+
+    @Inject
+    private Event<MailEvent> mail;
+
     // -------------------------------------------------------------------------
-    // CRUD Operations (Read)
+    // Queries
     // -------------------------------------------------------------------------
 
-    public Booking getBooking(UUID id) {
+    public Booking get(UUID id) {
         Booking booking = em.find(Booking.class, id);
-        if (booking == null) throw new WebApplicationException("Booking not found", 404);
+        if (booking == null) {
+            throw Errors.notFound("Booking not found.");
+        }
         return booking;
     }
 
-    public List<Booking> getAllBookings() {
-        return em.createQuery("SELECT b FROM Booking b", Booking.class).getResultList();
-    }
-
-    public List<Booking> getBookingsByCustomerId(UUID customerId) {
-        return em.createQuery("SELECT b FROM Booking b WHERE b.customer.id = :cid", Booking.class)
-                .setParameter("cid", customerId)
+    /** All bookings, newest first, optionally only those with the given status. */
+    public List<Booking> getAll(BookingStatus status) {
+        if (status == null) {
+            return em.createQuery("SELECT b FROM Booking b ORDER BY b.createdAt DESC", Booking.class).getResultList();
+        }
+        return em.createQuery("SELECT b FROM Booking b WHERE b.bookingStatus = :s ORDER BY b.createdAt DESC", Booking.class)
+                .setParameter("s", status)
                 .getResultList();
     }
 
-    public List<Booking> getBookingsByCarId(UUID carId) {
-        return em.createQuery("SELECT b FROM Booking b WHERE b.car.id = :cid", Booking.class)
-                .setParameter("cid", carId)
+    public List<Booking> getByCustomer(UUID customerId) {
+        return em.createQuery("SELECT b FROM Booking b WHERE b.customer.id = :id ORDER BY b.startDate DESC", Booking.class)
+                .setParameter("id", customerId)
+                .getResultList();
+    }
+
+    public List<Booking> getByCar(UUID carId) {
+        return em.createQuery("SELECT b FROM Booking b WHERE b.car.id = :id ORDER BY b.startDate DESC", Booking.class)
+                .setParameter("id", carId)
                 .getResultList();
     }
 
     // -------------------------------------------------------------------------
-    // Core Business Logic (Create/Update/Delete)
+    // Workflow
     // -------------------------------------------------------------------------
 
+    /**
+     * Creates a pending booking if the car is free for the whole period.
+     * <p>
+     * The car row is locked ({@code SELECT ... FOR UPDATE}) while the dates are checked, so two
+     * customers booking the same car at the same moment are handled one after the other and
+     * the second one gets a "dates already booked" error instead of a double booking.
+     * </p>
+     */
     @Transactional
-    public Booking createBooking(UUID customerId, UUID carId, LocalDate startDate, LocalDate endDate) {
-        // 1. Retrieve Entities
-        Customer customer = em.find(Customer.class, customerId);
-        Car car = em.find(Car.class, carId);
+    public Booking create(BookingRequest request) {
+        if (request == null || request.customerId == null || request.carId == null) {
+            throw new DomainException("Customer and car are required.");
+        }
+        Customer customer = em.find(Customer.class, request.customerId);
+        if (customer == null) {
+            throw Errors.notFound("Customer not found.");
+        }
+        Car car = em.find(Car.class, request.carId, LockModeType.PESSIMISTIC_WRITE);
+        if (car == null) {
+            throw Errors.notFound("Car not found.");
+        }
+        DateRange period = new DateRange(request.startDate, request.endDate);
+        if (cars.overlappingBookings(car.getId(), period) > 0) {
+            throw DomainException.conflict("This car is already booked for some of these dates. "
+                    + "Please choose other dates.");
+        }
 
-        // 2. Validate
-        if (customer == null) throw new WebApplicationException("Customer does not exist", 400);
-        if (car == null) throw new WebApplicationException("Car does not exist", 400);
-        if (car.getStatus() != CarStatus.AVAILABLE) throw new WebApplicationException("Car is not available", 400);
-        if (startDate == null || endDate == null) throw new WebApplicationException("Dates required", 400);
-        if (endDate.isBefore(startDate)) throw new WebApplicationException("Invalid date range", 400);
-
-        // 3. Calculate Costs
-        long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
-        double totalCost = car.getDailyRentalPrice() * days;
-        double depositAmount = car.getDepositAmount();
-
-        // 4. Create Entity (ID handled by @PrePersist)
-        Booking booking = new Booking();
-        booking.setCustomer(customer);
-        booking.setCar(car);
-        booking.setStartDate(startDate);
-        booking.setEndDate(endDate);
-        booking.setDepositAmount(depositAmount);
-        booking.setTotalCost(totalCost);
-        booking.setBookingStatus(BookingStatus.PENDING);
-        booking.setPaymentStatus(PaymentStatus.PENDING);
-
-        // 5. Persist
+        Booking booking = Booking.create(customer, car, period, LocalDateTime.now());
         em.persist(booking);
+        em.flush();   // assigns the id used in the PDF and the email
 
-        // 6. Generate PDF & Email (Asynchronous)
-        // Note: Fetch required data now to avoid LazyInitializationException in the async thread
-        byte[] pdfBytes = BookingPdf.create(booking);
-        EmailSender.sendWithPdf(customer.getEmail(), EmailTemplates.bookingCreated(booking),
-                pdfBytes, "Booking-" + EmailTemplates.reference(booking) + ".pdf");
-
+        mail.fire(new MailEvent(customer.getEmail(), EmailTemplates.bookingCreated(booking),
+                BookingPdf.create(booking), "Booking-" + booking.getReference() + ".pdf"));
         return booking;
     }
 
     @Transactional
-    public Booking updateBooking(UUID id, Booking update) {
-        Booking existing = em.find(Booking.class, id);
-        if (existing == null) throw new WebApplicationException("Booking not found", 404);
-
-        // Handle Car Change
-        if (update.getCar() != null && !update.getCar().getId().equals(existing.getCar().getId())) {
-            Car newCar = em.find(Car.class, update.getCar().getId());
-            if (newCar == null || newCar.getStatus() != CarStatus.AVAILABLE) {
-                throw new WebApplicationException("New car unavailable", 400);
-            }
-            // Release old, Book new
-            existing.getCar().setStatus(CarStatus.AVAILABLE);
-            newCar.setStatus(CarStatus.UNAVAILABLE);
-            existing.setCar(newCar);
-        }
-
-        // Handle Customer Change (and deposit transfer)
-        if (update.getCustomer() != null && !update.getCustomer().getId().equals(existing.getCustomer().getId())) {
-            Customer newCustomer = em.find(Customer.class, update.getCustomer().getId());
-            if (newCustomer == null) throw new WebApplicationException("New customer not found", 400);
-
-            // Refund old
-            Customer oldCustomer = existing.getCustomer();
-            oldCustomer.setBalance(oldCustomer.getBalance() + existing.getDepositAmount());
-
-            // Charge new
-            if (newCustomer.getBalance() < existing.getDepositAmount()) {
-                throw new WebApplicationException("Insufficient balance", 400);
-            }
-            newCustomer.setBalance(newCustomer.getBalance() - existing.getDepositAmount());
-            existing.setCustomer(newCustomer);
-        }
-
-        // Update basic fields
-        if (update.getTotalCost() > 0) existing.setTotalCost(update.getTotalCost());
-        if (update.getDepositAmount() > 0) existing.setDepositAmount(update.getDepositAmount());
-        if (update.getBookingStatus() != null) existing.setBookingStatus(update.getBookingStatus());
-        if (update.getPaymentStatus() != null) existing.setPaymentStatus(update.getPaymentStatus());
-        if (update.getStartDate() != null) existing.setStartDate(update.getStartDate());
-        if (update.getEndDate() != null) existing.setEndDate(update.getEndDate());
-
-        return existing;
-    }
-
-    @Transactional
-    public boolean removeBooking(UUID id) {
-        Booking booking = em.find(Booking.class, id);
-        if (booking != null) {
-            // Restore car status
-            booking.getCar().setStatus(CarStatus.AVAILABLE);
-            // Refund deposit if applicable (logic depends on policy, assuming full refund here)
-            Customer cust = booking.getCustomer();
-            cust.setBalance(cust.getBalance() + booking.getDepositAmount());
-
-            em.remove(booking);
-            return true;
-        }
-        return false;
-    }
-
-    // -------------------------------------------------------------------------
-    // Workflow Operations
-    // -------------------------------------------------------------------------
-
-    @Transactional
-    public Booking payForBooking(UUID bookingId) {
-        Booking booking = em.find(Booking.class, bookingId);
-        if (booking == null) throw new WebApplicationException("Booking not found", 404);
-
-        if (booking.getPaymentStatus() != PaymentStatus.PENDING) {
-            throw new WebApplicationException("Booking not pending payment", 400);
-        }
-
-        Customer customer = booking.getCustomer();
-        double amount = booking.getDepositAmount() + booking.getTotalCost();
-
-        if (customer.getBalance() < amount) {
-            booking.setPaymentStatus(PaymentStatus.FAILED);
-            throw new WebApplicationException("Insufficient balance", 400);
-        }
-
-        customer.setBalance(customer.getBalance() - amount);
-        booking.setPaymentStatus(PaymentStatus.SUCCESSFUL);
-        booking.setBookingStatus(BookingStatus.CONFIRMED);
-
-        EmailSender.send(customer.getEmail(), EmailTemplates.bookingPaid(booking, amount));
-
+    public Booking pay(UUID id) {
+        Booking booking = get(id);
+        booking.pay(LocalDateTime.now());
+        mail.fire(MailEvent.of(booking.getCustomer().getEmail(), EmailTemplates.bookingPaid(booking)));
         return booking;
     }
 
     @Transactional
-    public void confirmBooking(UUID bookingId) {
-        Booking booking = em.find(Booking.class, bookingId);
-        if (booking == null) throw new WebApplicationException("Booking not found", 404);
-
-        if (booking.getBookingStatus() != BookingStatus.PENDING) {
-            throw new WebApplicationException("Only pending bookings can be confirmed", 400);
-        }
-
-        Car car = booking.getCar();
-        Customer customer = booking.getCustomer();
-
-        if (car.getStatus() != CarStatus.AVAILABLE) {
-            throw new WebApplicationException("Car is not available", 400);
-        }
-
-        double deposit = booking.getDepositAmount();
-        if (customer.getBalance() < deposit) {
-            throw new WebApplicationException("Insufficient balance", 400);
-        }
-
-        // Deduct and Update Status
-        customer.setBalance(customer.getBalance() - deposit);
-        car.setStatus(CarStatus.UNAVAILABLE);
-        booking.setBookingStatus(BookingStatus.CONFIRMED);
-        booking.setPaymentStatus(PaymentStatus.SUCCESSFUL);
-
-        EmailSender.send(customer.getEmail(), EmailTemplates.bookingConfirmed(booking, deposit));
-    }
-
-    @Transactional
-    public void completeBooking(UUID bookingId) {
-        Booking booking = em.find(Booking.class, bookingId);
-        if (booking == null) throw new WebApplicationException("Booking not found", 404);
-
-        Car car = booking.getCar();
-        Customer customer = booking.getCustomer();
-
-        // Release Car
-        car.setStatus(CarStatus.AVAILABLE);
-
-        // Final Payment (Total - Deposit)
-        double remaining = booking.getTotalCost() - booking.getDepositAmount();
-        if (remaining > 0) {
-            if (customer.getBalance() < remaining) {
-                throw new WebApplicationException("Insufficient balance", 400);
-            }
-            customer.setBalance(customer.getBalance() - remaining);
-        }
-
-        booking.setBookingStatus(BookingStatus.COMPLETED);
-        EmailSender.send(customer.getEmail(), EmailTemplates.bookingCompleted(booking, Math.max(remaining, 0)));
-    }
-
-    @Transactional
-    public void cancelBooking(UUID bookingId) {
-        Booking booking = em.find(Booking.class, bookingId);
-        if (booking == null) throw new WebApplicationException("Booking not found", 404);
-
-        // Refund and Release
-        booking.getCar().setStatus(CarStatus.AVAILABLE);
-        booking.getCustomer().setBalance(booking.getCustomer().getBalance() + booking.getDepositAmount());
-
-        booking.setBookingStatus(BookingStatus.CANCELLED);
-        booking.setPaymentStatus(PaymentStatus.REFUNDED);
-
-        EmailSender.send(booking.getCustomer().getEmail(),
-                EmailTemplates.bookingCancelled(booking, booking.getDepositAmount()));
-    }
-
-    @Transactional
-    public Booking rejectBooking(UUID bookingId, String reason) {
-        Booking booking = em.find(Booking.class, bookingId);
-        if (booking == null) throw new WebApplicationException("Booking not found", 404);
-
-        if (booking.getBookingStatus() == BookingStatus.CANCELLED || booking.getBookingStatus() == BookingStatus.REJECTED) {
-            throw new WebApplicationException("Already cancelled/rejected", 400);
-        }
-
-        booking.setBookingStatus(BookingStatus.REJECTED);
-
-        // Auto Refund if paid
-        double refund = 0;
-        if (booking.getPaymentStatus() == PaymentStatus.SUCCESSFUL) {
-            Customer c = booking.getCustomer();
-            refund = booking.getDepositAmount() + booking.getTotalCost();
-            c.setBalance(c.getBalance() + refund);
-            booking.setPaymentStatus(PaymentStatus.REFUNDED);
-        }
-
-        EmailSender.send(booking.getCustomer().getEmail(), EmailTemplates.bookingRejected(booking, reason, refund));
+    public Booking cancel(UUID id) {
+        Booking booking = get(id);
+        BigDecimal refund = booking.cancel(LocalDateTime.now());
+        mail.fire(MailEvent.of(booking.getCustomer().getEmail(), EmailTemplates.bookingCancelled(booking, refund)));
         return booking;
+    }
+
+    @Transactional
+    public Booking reject(UUID id, String reason) {
+        Booking booking = get(id);
+        BigDecimal refund = booking.reject(reason, LocalDateTime.now());
+        mail.fire(MailEvent.of(booking.getCustomer().getEmail(),
+                EmailTemplates.bookingRejected(booking, booking.getRejectionReason(), refund)));
+        return booking;
+    }
+
+    @Transactional
+    public Booking pickUp(UUID id) {
+        Booking booking = get(id);
+        booking.pickUp(LocalDateTime.now().toLocalDate());
+        return booking;
+    }
+
+    @Transactional
+    public Booking complete(UUID id) {
+        Booking booking = get(id);
+        BigDecimal deposit = booking.complete(LocalDateTime.now());
+        mail.fire(MailEvent.of(booking.getCustomer().getEmail(), EmailTemplates.bookingCompleted(booking, deposit)));
+        return booking;
+    }
+
+    /** Releases the cars of unpaid bookings whose payment window has passed. Returns how many expired. */
+    @Transactional
+    public int expireOverdue() {
+        LocalDateTime now = LocalDateTime.now();
+        List<Booking> pending = em.createQuery("SELECT b FROM Booking b WHERE b.bookingStatus = :s AND b.createdAt < :cutoff",
+                        Booking.class)
+                .setParameter("s", BookingStatus.PENDING)
+                .setParameter("cutoff", now.minus(Booking.PAYMENT_WINDOW))
+                .getResultList();
+        int expired = 0;
+        for (Booking booking : pending) {
+            if (booking.expireIfOverdue(now)) {
+                expired++;
+                mail.fire(MailEvent.of(booking.getCustomer().getEmail(), EmailTemplates.bookingExpired(booking)));
+            }
+        }
+        return expired;
+    }
+
+    public byte[] pdf(UUID id) {
+        return BookingPdf.create(get(id));
     }
 }

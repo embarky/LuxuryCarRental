@@ -4,91 +4,197 @@ import ch.unil.softarch.luxurycarrental.domain.entities.Booking;
 import ch.unil.softarch.luxurycarrental.domain.entities.Car;
 import ch.unil.softarch.luxurycarrental.domain.entities.Customer;
 import ch.unil.softarch.luxurycarrental.domain.enums.BookingStatus;
+import ch.unil.softarch.luxurycarrental.domain.enums.CarStatus;
 import ch.unil.softarch.luxurycarrental.domain.enums.PaymentStatus;
-
+import ch.unil.softarch.luxurycarrental.domain.model.DateRange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for the {@link Booking} domain entity.
+ * The money rules of a booking: whatever path a booking takes, the customer ends up
+ * paying exactly the rental (or nothing), never more or less.
+ * Example: 3 days at CHF 300 = CHF 900 rental, CHF 500 deposit, balance CHF 2000.
  */
 class BookingTest {
 
-    private Booking booking;
-    private UUID bookingId;
-    private Car car;
+    private static final LocalDateTime NOW = TestData.TODAY.atTime(10, 0);
+    private static final DateRange JUNE_10_TO_13 =
+            new DateRange(LocalDate.of(2026, 6, 10), LocalDate.of(2026, 6, 13));
+
     private Customer customer;
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private Car car;
+    private Booking booking;
 
     @BeforeEach
     void setUp() {
-        bookingId = UUID.randomUUID();
-
-        // Initialize dummy objects for relationships
-        car = new Car();
-        car.setLicensePlate("TEST-PLATE"); // Set fields used in toString
-
-        customer = new Customer();
-        customer.setEmail("test@example.com"); // Set fields used in toString
-
-        startDate = LocalDate.of(2025, 11, 1);
-        endDate = LocalDate.of(2025, 11, 5);
-
-        // 1. Initialize Booking using the new constructor (without ID)
-        booking = new Booking(
-                car,
-                customer,
-                startDate,
-                endDate,
-                500.0,
-                100.0,
-                BookingStatus.PENDING,
-                PaymentStatus.SUCCESSFUL
-        );
-
-        // 2. Manually set the ID for testing
-        // Rationale: @PrePersist is not triggered in unit tests.
-        booking.setBookingId(bookingId);
+        customer = TestData.customer("2000.00", true);
+        car = TestData.car();
+        booking = Booking.create(customer, car, JUNE_10_TO_13, NOW);
     }
 
+    private BigDecimal balance() {
+        return customer.getBalance();
+    }
+
+    // ---- creation ---------------------------------------------------------
+
     @Test
-    void testGetters() {
-        assertEquals(bookingId, booking.getBookingId());
-        assertEquals(car, booking.getCar());
-        assertEquals(customer, booking.getCustomer());
-        assertEquals(startDate, booking.getStartDate());
-        assertEquals(endDate, booking.getEndDate());
-        assertEquals(500.0, booking.getTotalCost());
-        assertEquals(100.0, booking.getDepositAmount());
+    void newBookingIsPendingAndChargesNothing() {
         assertEquals(BookingStatus.PENDING, booking.getBookingStatus());
-        assertEquals(PaymentStatus.SUCCESSFUL, booking.getPaymentStatus());
+        assertEquals(PaymentStatus.UNPAID, booking.getPaymentStatus());
+        assertEquals(new BigDecimal("900.00"), booking.getTotalCost());
+        assertEquals(new BigDecimal("500.00"), booking.getDepositAmount());
+        assertEquals(new BigDecimal("1400.00"), booking.getAmountDue());
+        assertEquals(new BigDecimal("2000.00"), balance());
     }
 
     @Test
-    void testSetters() {
-        booking.setTotalCost(600.0);
-        assertEquals(600.0, booking.getTotalCost());
+    void cannotBookInThePast() {
+        DateRange past = new DateRange(LocalDate.of(2026, 5, 20), LocalDate.of(2026, 5, 22));
+        assertThrows(DomainException.class, () -> Booking.create(customer, car, past, NOW));
+    }
 
-        booking.setBookingStatus(BookingStatus.CONFIRMED);
+    @Test
+    void cannotBookACarInMaintenance() {
+        car.setStatus(CarStatus.MAINTENANCE);
+        assertThrows(DomainException.class, () -> Booking.create(customer, car, JUNE_10_TO_13, NOW));
+    }
+
+    @Test
+    void licenceMustCoverTheWholeRental() {
+        customer.setDrivingLicenseExpiryDate(LocalDate.of(2026, 6, 12));
+        assertThrows(DomainException.class, () -> Booking.create(customer, car, JUNE_10_TO_13, NOW));
+    }
+
+    // ---- happy path -------------------------------------------------------
+
+    @Test
+    void fullRentalCostsExactlyTheRental() {
+        booking.pay(NOW);
+        assertEquals(BookingStatus.CONFIRMED, booking.getBookingStatus());
+        assertEquals(new BigDecimal("600.00"), balance());       // 2000 - 900 - 500
+
+        booking.pickUp(LocalDate.of(2026, 6, 10));
+        assertEquals(BookingStatus.ACTIVE, booking.getBookingStatus());
+
+        assertEquals(new BigDecimal("500.00"), booking.complete(NOW.plusDays(12)));
+        assertEquals(BookingStatus.COMPLETED, booking.getBookingStatus());
+        assertEquals(new BigDecimal("1100.00"), balance());      // paid 900 in total
+    }
+
+    // ---- payment ----------------------------------------------------------
+
+    @Test
+    void cannotPayTwice() {
+        booking.pay(NOW);
+        assertThrows(DomainException.class, () -> booking.pay(NOW));
+        assertEquals(new BigDecimal("600.00"), balance());
+    }
+
+    @Test
+    void unverifiedCustomerCannotPay() {
+        customer.setVerifiedIdentity(false);
+        assertThrows(DomainException.class, () -> booking.pay(NOW));
+        assertEquals(BookingStatus.PENDING, booking.getBookingStatus());
+    }
+
+    @Test
+    void insufficientBalanceLeavesEverythingUnchanged() {
+        customer.setBalance(new BigDecimal("1000.00"));
+        assertThrows(DomainException.class, () -> booking.pay(NOW));
+        assertEquals(BookingStatus.PENDING, booking.getBookingStatus());
+        assertEquals(new BigDecimal("1000.00"), balance());
+    }
+
+    // ---- cancellation -----------------------------------------------------
+
+    @Test
+    void cancellingAnUnpaidBookingRefundsNothing() {
+        assertEquals(new BigDecimal("0.00"), booking.cancel(NOW));
+        assertEquals(BookingStatus.CANCELLED, booking.getBookingStatus());
+        assertEquals(new BigDecimal("2000.00"), balance());      // old bug: +500 for free
+    }
+
+    @Test
+    void cancellingAPaidBookingRefundsEverything() {
+        booking.pay(NOW);
+        assertEquals(new BigDecimal("1400.00"), booking.cancel(NOW));
+        assertEquals(PaymentStatus.REFUNDED, booking.getPaymentStatus());
+        assertEquals(new BigDecimal("2000.00"), balance());
+    }
+
+    @Test
+    void paidBookingCannotBeCancelledShortlyBeforePickUp() {
+        booking.pay(NOW);
+        LocalDateTime dayBefore = LocalDate.of(2026, 6, 9).atTime(9, 0);
+        assertThrows(DomainException.class, () -> booking.cancel(dayBefore));
         assertEquals(BookingStatus.CONFIRMED, booking.getBookingStatus());
     }
 
     @Test
-    void testToString() {
-        String str = booking.toString();
-        // Verify key fields are present
-        assertTrue(str.contains(bookingId.toString()));
-        assertTrue(str.contains("500.0"));
-        assertTrue(str.contains("PENDING"));
+    void finishedBookingsCannotBeCancelled() {
+        booking.pay(NOW);
+        booking.pickUp(LocalDate.of(2026, 6, 10));
+        booking.complete(NOW.plusDays(12));
+        assertThrows(DomainException.class, () -> booking.cancel(NOW.plusDays(13)));
+        assertEquals(new BigDecimal("1100.00"), balance());
+    }
 
-        // Verify related entity info (based on updated toString logic)
-        assertTrue(str.contains("TEST-PLATE"));
-        assertTrue(str.contains("test@example.com"));
+    // ---- rejection --------------------------------------------------------
+
+    @Test
+    void rejectingAPaidBookingRefundsExactlyWhatWasPaid() {
+        booking.pay(NOW);
+        assertEquals(new BigDecimal("1400.00"), booking.reject("Licence could not be verified", NOW));
+        assertEquals(BookingStatus.REJECTED, booking.getBookingStatus());
+        assertEquals("Licence could not be verified", booking.getRejectionReason());
+        assertEquals(new BigDecimal("2000.00"), balance());
+    }
+
+    @Test
+    void rejectionNeedsAReason() {
+        assertThrows(DomainException.class, () -> booking.reject(" ", NOW));
+    }
+
+    @Test
+    void activeBookingCannotBeRejected() {
+        booking.pay(NOW);
+        booking.pickUp(LocalDate.of(2026, 6, 10));
+        assertThrows(DomainException.class, () -> booking.reject("Too late", NOW));
+    }
+
+    // ---- pick-up, completion, expiry --------------------------------------
+
+    @Test
+    void cannotPickUpBeforeTheStartDate() {
+        booking.pay(NOW);
+        assertThrows(DomainException.class, () -> booking.pickUp(LocalDate.of(2026, 6, 9)));
+    }
+
+    @Test
+    void onlyAnActiveBookingCanBeCompleted() {
+        booking.pay(NOW);
+        assertThrows(DomainException.class, () -> booking.complete(NOW));
+        assertEquals(new BigDecimal("600.00"), balance());
+    }
+
+    @Test
+    void unpaidBookingExpiresAfterThePaymentWindow() {
+        assertFalse(booking.expireIfOverdue(NOW.plusHours(23)));
+        assertTrue(booking.expireIfOverdue(NOW.plusHours(25)));
+        assertEquals(BookingStatus.EXPIRED, booking.getBookingStatus());
+        assertFalse(booking.isOccupyingCar());
+    }
+
+    @Test
+    void paidBookingNeverExpires() {
+        booking.pay(NOW);
+        assertFalse(booking.expireIfOverdue(NOW.plusDays(30)));
     }
 }

@@ -1,286 +1,143 @@
 package ch.unil.softarch.luxurycarrental.service;
 
+import ch.unil.softarch.luxurycarrental.api.Errors;
+import ch.unil.softarch.luxurycarrental.domain.DomainException;
+import ch.unil.softarch.luxurycarrental.domain.dto.AdminRequest;
+import ch.unil.softarch.luxurycarrental.domain.dto.PasswordChange;
 import ch.unil.softarch.luxurycarrental.domain.entities.Admin;
+import ch.unil.softarch.luxurycarrental.security.PasswordHasher;
+import ch.unil.softarch.luxurycarrental.security.Role;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
-import jakarta.ws.rs.WebApplicationException;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
-/**
- * Service class for managing Administrator accounts.
- * <p>
- * This class handles the business logic for creating, retrieving, updating, and deleting admins.
- * It interacts with the database using the Jakarta Persistence API (JPA) {@link EntityManager}.
- * </p>
- */
+/** Administrator accounts. Only administrators create other administrators. */
 @ApplicationScoped
 public class AdminService {
 
-    /**
-     * The Entity Manager used to interact with the persistence context (Database).
-     * The unitName must match the one defined in your persistence.xml.
-     */
     @PersistenceContext(unitName = "LuxuryCarRentalPU")
     private EntityManager em;
 
-    // Temporary in-memory storage for password reset codes.
-    // In a production environment, it is recommended to store these codes in the database (e.g., in the Admin entity).
-    private final Map<String, VerificationCode> passwordResetCodes = new ConcurrentHashMap<>();
+    @Inject
+    private PasswordResetService resetCodes;
 
-    /**
-     * Inner class to represent a verification code with a timestamp.
-     */
-    private static class VerificationCode {
-        String code;
-        LocalDateTime createdAt;
+    @Inject
+    private Event<MailEvent> mail;
 
-        VerificationCode(String code, LocalDateTime createdAt) {
-            this.code = code;
-            this.createdAt = createdAt;
+    @Transactional
+    public Admin create(AdminRequest request) {
+        if (request == null) {
+            throw new DomainException("Administrator data is missing.");
         }
-    }
+        String username = Validation.required(request.username, "Username");
+        String email = Validation.email(request.email);
+        String name = Validation.required(request.name, "Name");
+        PasswordHasher.checkPolicy(request.password);
 
-    // -------------------------------------------------------------------------
-    // Create
-    // -------------------------------------------------------------------------
-
-    /**
-     * Registers a new administrator in the system.
-     *
-     * @param admin The admin entity to persist.
-     * @return The persisted admin entity.
-     * @throws WebApplicationException if the username or email already exists.
-     */
-    @Transactional // Required for write operations (INSERT)
-    public Admin addAdmin(Admin admin) {
-
-        // NOTE ON PERSISTENCE:
-        // The ID, createdAt, and updatedAt fields must be set by the Admin entity's @PrePersist
-        // callback to satisfy NOT NULL constraints before the transaction commits.
-
-        // 1. Check if the username already exists.
-        Long usernameCount = em.createQuery("SELECT COUNT(a) FROM Admin a WHERE a.username = :username", Long.class)
-                .setParameter("username", admin.getUsername())
-                .getSingleResult();
-        if (usernameCount > 0) {
-            throw new WebApplicationException("Username already exists", 400);
+        if (count("a.username = :v", username) > 0) {
+            throw DomainException.conflict("This username is already taken.");
         }
-
-        // 2. Check if the email already exists.
-        Long emailCount = em.createQuery("SELECT COUNT(a) FROM Admin a WHERE a.email = :email", Long.class)
-                .setParameter("email", admin.getEmail())
-                .getSingleResult();
-        if (emailCount > 0) {
-            throw new WebApplicationException("Email already exists", 400);
+        if (count("LOWER(a.email) = :v", email) > 0) {
+            throw DomainException.conflict("An administrator with this email already exists.");
         }
-
-        // 3. Persist the new entity.
+        Admin admin = new Admin(username, PasswordHasher.hash(request.password), name, email);
         em.persist(admin);
-
-        // 4. Send a welcome email asynchronously (independent of the transaction status).
-        sendWelcomeEmail(admin);
-
+        mail.fire(MailEvent.of(admin.getEmail(), EmailTemplates.adminWelcome(admin)));
         return admin;
     }
 
-    /**
-     * Helper method to send a welcome email asynchronously to avoid blocking the transaction.
-     */
-    private void sendWelcomeEmail(Admin admin) {
-        EmailSender.send(admin.getEmail(), EmailTemplates.adminWelcome(admin));
-    }
-
-    // -------------------------------------------------------------------------
-    // Read
-    // -------------------------------------------------------------------------
-
-    /**
-     * Retrieves an admin by their unique ID.
-     *
-     * @param id The UUID of the admin.
-     * @return The found Admin entity.
-     * @throws WebApplicationException if no admin is found.
-     */
-    public Admin getAdmin(UUID id) {
-        // Uses EntityManager.find() for efficient primary key lookup.
-        Admin admin = em.find(Admin.class, id);
-        if (admin == null) throw new WebApplicationException("Admin not found", 404);
-        return admin;
-    }
-
-    /**
-     * Retrieves all administrators from the database.
-     *
-     * @return A list of all Admin entities.
-     */
-    public List<Admin> getAllAdmins() {
-        // Uses JP-QL to select all records from the Admin table.
-        return em.createQuery("SELECT a FROM Admin a", Admin.class).getResultList();
-    }
-
-    // -------------------------------------------------------------------------
-    // Update
-    // -------------------------------------------------------------------------
-
-    /**
-     * Updates an existing administrator's details.
-     *
-     * @param id     The ID of the admin to update.
-     * @param update An Admin object containing the new values.
-     * @return The updated Admin entity.
-     */
-    @Transactional // Required for write operations (UPDATE)
-    public Admin updateAdmin(UUID id, Admin update) {
-        // 1. Find the existing entity. It becomes "Managed" by the persistence context.
-        Admin existing = em.find(Admin.class, id);
-        if (existing == null) throw new WebApplicationException("Admin not found", 404);
-
-        // 2. Update fields if they are provided.
-        if (update.getName() != null) existing.setName(update.getName());
-        if (update.getUsername() != null) existing.setUsername(update.getUsername());
-        if (update.getEmail() != null) existing.setEmail(update.getEmail());
-        if (update.getPassword() != null && !update.getPassword().isBlank()) {
-            existing.setPassword(update.getPassword());
+    /** Creates the first administrator when there is none (called at start-up). */
+    @Transactional
+    public void ensureDefaultAdmin(String email, String password) {
+        Long admins = em.createQuery("SELECT COUNT(a) FROM Admin a", Long.class).getSingleResult();
+        if (admins == 0) {
+            em.persist(new Admin("admin", PasswordHasher.hash(password), "Administrator", email.toLowerCase()));
+            System.out.println("[AdminService] Created the default administrator " + email);
         }
-
-        // 3. Automatic Dirty Checking:
-        // Because 'existing' is in the "Managed" state, JPA detects changes automatically.
-        // The UPDATE SQL statement will be generated automatically when the transaction commits.
-        // No explicit em.merge() or save() call is strictly necessary here.
-
-        return existing;
     }
 
-    // -------------------------------------------------------------------------
-    // Delete
-    // -------------------------------------------------------------------------
-
-    /**
-     * Removes an administrator from the system.
-     *
-     * @param id The ID of the admin to delete.
-     * @return true if deleted successfully, false if not found.
-     */
-    @Transactional // Required for write operations (DELETE)
-    public boolean removeAdmin(UUID id) {
-        Admin admin = em.find(Admin.class, id);
-        if (admin != null) {
-            em.remove(admin);
-            return true;
-        }
-        return false;
-    }
-
-    // -------------------------------------------------------------------------
-    // Authentication
-    // -------------------------------------------------------------------------
-
-    /**
-     * Authenticates an admin using email and password.
-     *
-     * @param email    The login email.
-     * @param password The login password.
-     * @return The authenticated Admin entity.
-     * @throws WebApplicationException if authentication fails.
-     */
     public Admin authenticate(String email, String password) {
-        try {
-            // Uses a typed JP-QL query to find a matching user.
-            TypedQuery<Admin> query = em.createQuery(
-                    "SELECT a FROM Admin a WHERE a.email = :email AND a.password = :password",
-                    Admin.class);
-            query.setParameter("email", email);
-            query.setParameter("password", password);
-
-            // Returns the single result or throws NoResultException if none found.
-            return query.getSingleResult();
-        } catch (Exception e) {
-            throw new WebApplicationException("Invalid email or password", 401);
-        }
+        return findByEmail(email)
+                .filter(a -> PasswordHasher.matches(password, a.getPassword()))
+                .orElseThrow(() -> Errors.unauthorized("Invalid email or password."));
     }
 
-    // -------------------------------------------------------------------------
-    // Password Reset Logic
-    // -------------------------------------------------------------------------
-
-    /**
-     * Generates a verification code and sends it to the admin's email.
-     *
-     * @param email The email address of the admin.
-     */
-    public void sendAdminPasswordResetCodeByEmail(String email) {
-        // 1. Verify the admin exists in the database.
-        Admin admin;
-        try {
-            admin = em.createQuery("SELECT a FROM Admin a WHERE a.email = :email", Admin.class)
-                    .setParameter("email", email)
-                    .getSingleResult();
-        } catch (Exception e) {
-            throw new WebApplicationException("Admin account not found", 404);
+    public Admin get(UUID id) {
+        Admin admin = em.find(Admin.class, id);
+        if (admin == null) {
+            throw Errors.notFound("Administrator not found.");
         }
-
-        // 2. Generate a random 6-digit code.
-        String code = String.format("%06d", new Random().nextInt(999999));
-
-        // 3. Store the code in the temporary in-memory map.
-        passwordResetCodes.put(admin.getEmail(), new VerificationCode(code, LocalDateTime.now()));
-
-        // 4. Send the code via email.
-        EmailSender.send(admin.getEmail(), EmailTemplates.passwordResetCode(admin.getName(), code, 5));
+        return admin;
     }
 
-    /**
-     * Verifies the code and updates the admin's password.
-     *
-     * @param email       The email address.
-     * @param code        The verification code received.
-     * @param newPassword The new password to set.
-     */
-    @Transactional // Required because we are updating the password in the database
-    public void resetAdminPasswordWithCodeByEmail(String email, String code, String newPassword) {
-        // 1. Retrieve the admin entity (Managed state).
-        Admin admin;
-        try {
-            admin = em.createQuery("SELECT a FROM Admin a WHERE a.email = :email", Admin.class)
-                    .setParameter("email", email)
-                    .getSingleResult();
-        } catch (Exception e) {
-            throw new WebApplicationException("Admin account not found", 404);
+    public List<Admin> getAll() {
+        return em.createQuery("SELECT a FROM Admin a ORDER BY a.createdAt", Admin.class).getResultList();
+    }
+
+    public Optional<Admin> findByEmail(String email) {
+        if (email == null) {
+            return Optional.empty();
         }
+        return em.createQuery("SELECT a FROM Admin a WHERE LOWER(a.email) = :email", Admin.class)
+                .setParameter("email", email.trim().toLowerCase())
+                .getResultStream()
+                .findFirst();
+    }
 
-        // 2. Validate the code from the in-memory map.
-        VerificationCode stored = passwordResetCodes.get(email);
-        if (stored == null) {
-            throw new WebApplicationException("No verification code found", 400);
+    /** Deletes another administrator; nobody can delete themselves or the last administrator. */
+    @Transactional
+    public void remove(UUID id, UUID callerId) {
+        if (id.equals(callerId)) {
+            throw new DomainException("You cannot delete your own account.");
         }
-
-        // Check for expiration (5 minutes).
-        if (Duration.between(stored.createdAt, LocalDateTime.now()).toMinutes() >= 5) {
-            passwordResetCodes.remove(email);
-            throw new WebApplicationException("Verification code has expired", 400);
+        Admin admin = get(id);
+        Long admins = em.createQuery("SELECT COUNT(a) FROM Admin a", Long.class).getSingleResult();
+        if (admins <= 1) {
+            throw new DomainException("The last administrator cannot be deleted.");
         }
+        em.remove(admin);
+    }
 
-        // Check if code matches.
-        if (!stored.code.equals(code)) {
-            throw new WebApplicationException("Invalid verification code", 400);
+    @Transactional
+    public void changePassword(UUID id, PasswordChange change) {
+        Admin admin = get(id);
+        if (change == null || !PasswordHasher.matches(change.currentPassword, admin.getPassword())) {
+            throw new DomainException("Your current password is not correct.");
         }
+        PasswordHasher.checkPolicy(change.newPassword);
+        admin.setPassword(PasswordHasher.hash(change.newPassword));
+        mail.fire(MailEvent.of(admin.getEmail(), EmailTemplates.passwordChanged(admin.getName())));
+    }
 
-        // 3. Update the password.
-        // Since 'admin' is a managed entity within a transaction, this change is
-        // automatically persisted to the database upon method completion.
-        admin.setPassword(newPassword);
+    @Transactional
+    public void sendPasswordResetCode(String email) {
+        findByEmail(email).ifPresent(a -> {
+            String code = resetCodes.issue(Role.ADMIN, a.getEmail());
+            mail.fire(MailEvent.of(a.getEmail(), EmailTemplates.passwordResetCode(a.getName(), code,
+                    (int) PasswordResetService.VALIDITY.toMinutes())));
+        });
+    }
 
-        // 4. Clean up the used code.
-        passwordResetCodes.remove(email);
+    @Transactional(dontRollbackOn = DomainException.class)
+    public void resetPassword(String email, String code, String newPassword) {
+        Admin admin = findByEmail(email)
+                .orElseThrow(() -> new DomainException("This code has expired. Please ask for a new one."));
+        PasswordHasher.checkPolicy(newPassword);
+        resetCodes.consume(Role.ADMIN, admin.getEmail(), code);
+        admin.setPassword(PasswordHasher.hash(newPassword));
+        mail.fire(MailEvent.of(admin.getEmail(), EmailTemplates.passwordChanged(admin.getName())));
+    }
 
-        // 5. Send confirmation email.
-        EmailSender.send(email, EmailTemplates.passwordChanged(admin.getName()));
+    private long count(String condition, String value) {
+        return em.createQuery("SELECT COUNT(a) FROM Admin a WHERE " + condition, Long.class)
+                .setParameter("v", value)
+                .getSingleResult();
     }
 }

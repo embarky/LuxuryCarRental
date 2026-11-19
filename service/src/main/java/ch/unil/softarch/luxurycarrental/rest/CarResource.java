@@ -1,17 +1,24 @@
 package ch.unil.softarch.luxurycarrental.rest;
 
+import ch.unil.softarch.luxurycarrental.domain.DomainException;
+import ch.unil.softarch.luxurycarrental.domain.dto.BookedPeriod;
+import ch.unil.softarch.luxurycarrental.domain.dto.MessageResponse;
 import ch.unil.softarch.luxurycarrental.domain.entities.Car;
+import ch.unil.softarch.luxurycarrental.security.Public;
 import ch.unil.softarch.luxurycarrental.service.CarService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * REST resource class for managing Car entities.
- * Handles CRUD operations through HTTP requests.
+ * The fleet. Searching and reading are public; the full list (including cars in maintenance)
+ * and all changes are for administrators.
  */
 @Path("/cars")
 @Produces(MediaType.APPLICATION_JSON)
@@ -19,85 +26,72 @@ import java.util.UUID;
 public class CarResource {
 
     @Inject
-    private CarService carService;
+    private CarService cars;
 
-    /**
-     * Retrieve all cars.
-     * @return a list of all available cars
-     */
+    /** Every car, including those in maintenance. */
     @GET
-    public List<Car> getAllCars() {
-        return carService.getAllCars();
+    public List<Car> getAll() {
+        return cars.getAll();
     }
 
     /**
-     * Retrieve a specific car by its ID.
-     * @param id the unique identifier of the car
-     * @return the car with the given ID
-     */
-    @GET
-    @Path("/{id}")
-    public Car getCar(@PathParam("id") UUID id) {
-        return carService.getCar(id);
-    }
-
-    /**
-     * Create a new car entry.
-     * @param car the car object to be added
-     * @return the created car with its generated ID
-     */
-    @POST
-    public Car addCar(Car car) {
-        return carService.addCar(car);
-    }
-
-    /**
-     * Update an existing car's information.
-     * Only non-null or positive fields will be updated.
-     * @param id the ID of the car to update
-     * @param update the new car data
-     * @return the updated car object
-     */
-    @PUT
-    @Path("/{id}")
-    public Car updateCar(@PathParam("id") UUID id, Car update) {
-        return carService.updateCar(id, update);
-    }
-
-    /**
-     * Delete a car by its ID.
-     * @param id the unique identifier of the car
-     * @return true if deletion was successful, false otherwise
-     */
-    @DELETE
-    @Path("/{id}")
-    public boolean removeCar(@PathParam("id") UUID id) {
-        return carService.removeCar(id);
-    }
-
-    /**
-     * Fuzzy search / filter cars.
-     * Example query:
-     * GET /cars/search?q=camry&maxPrice=150&status=AVAILABLE
+     * Cars customers can book. Example:
+     * {@code GET /cars/search?q=porsche&category=Sport&maxPrice=900&start=2026-07-01&end=2026-07-05}
      */
     @GET
     @Path("/search")
-    public List<Car> searchCars(
-            @QueryParam("q") String q,
-            @QueryParam("status") String status,
-            @QueryParam("minPrice") Double minPrice,
-            @QueryParam("maxPrice") Double maxPrice,
-            @QueryParam("carTypeId") String carTypeIdStr  // accept as string and convert
-    ) {
-        UUID carTypeId = null;
-        if (carTypeIdStr != null && !carTypeIdStr.isBlank()) {
-            try {
-                carTypeId = UUID.fromString(carTypeIdStr);
-            } catch (IllegalArgumentException e) {
-                throw new WebApplicationException("Invalid carTypeId UUID", 400);
-            }
-        }
+    @Public
+    public List<Car> search(@QueryParam("q") String text,
+                            @QueryParam("carTypeId") UUID carTypeId,
+                            @QueryParam("category") String category,
+                            @QueryParam("minPrice") BigDecimal minPrice,
+                            @QueryParam("maxPrice") BigDecimal maxPrice,
+                            @QueryParam("start") String start,
+                            @QueryParam("end") String end) {
+        return cars.search(text, carTypeId, category, minPrice, maxPrice, date(start), date(end));
+    }
 
-        return carService.searchCars(q, status, minPrice, maxPrice, carTypeId);
+    @GET
+    @Path("/{id}")
+    @Public
+    public Car get(@PathParam("id") UUID id) {
+        return cars.get(id);
+    }
+
+    /** Dates on which the car is already taken. */
+    @GET
+    @Path("/{id}/booked")
+    @Public
+    public List<BookedPeriod> booked(@PathParam("id") UUID id) {
+        return cars.bookedPeriods(id);
+    }
+
+    @POST
+    public Car add(Car car) {
+        return cars.add(car);
+    }
+
+    @PUT
+    @Path("/{id}")
+    public Car update(@PathParam("id") UUID id, Car update) {
+        return cars.update(id, update);
+    }
+
+    @DELETE
+    @Path("/{id}")
+    public MessageResponse remove(@PathParam("id") UUID id) {
+        cars.remove(id);
+        return new MessageResponse("Car deleted.");
+    }
+
+    private static LocalDate date(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new DomainException("Dates must be written as YYYY-MM-DD.");
+        }
     }
 }

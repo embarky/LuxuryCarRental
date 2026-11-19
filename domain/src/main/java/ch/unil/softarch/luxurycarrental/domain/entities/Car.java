@@ -1,17 +1,20 @@
 package ch.unil.softarch.luxurycarrental.domain.entities;
 
 import ch.unil.softarch.luxurycarrental.domain.enums.CarStatus;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import ch.unil.softarch.luxurycarrental.domain.model.Money;
 import jakarta.persistence.*;
+
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Represents a physical Car in the fleet.
+ * A physical car of the fleet, linked to a {@link CarType} (brand, model, specs).
  * <p>
- * This entity links a specific physical vehicle (identified by VIN/License Plate)
- * to a generic {@link CarType} (Model/Brand).
+ * {@link #getStatus()} only says whether the car is in service. Whether it is free on
+ * given dates is computed from its bookings.
  * </p>
  */
 @Entity
@@ -23,91 +26,65 @@ public class Car implements Serializable {
     @Id
     @GeneratedValue
     @Column(length = 36)
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private UUID id;  // Unique car ID (UUID)
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String licensePlate;
 
-    /**
-     * Relationship to the CarType entity.
-     * 'fetch = FetchType.LAZY' is recommended for performance.
-     * 'name = "car_type_id"' defines the foreign key column in the 'car' table.
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "car_type_id", nullable = false)
     private CarType carType;
 
-    @Column(nullable = false)
-    private double dailyRentalPrice;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal dailyRentalPrice;
 
-    @Column(nullable = false)
-    private double depositAmount;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal depositAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private CarStatus status;
+    private CarStatus status = CarStatus.AVAILABLE;
 
+    @Column(length = 1000)
     private String imageUrl;
 
     private LocalDate registrationDate;
 
     private LocalDate lastMaintenanceDate;
 
-    @Column(unique = true)
-    private String vin;  // Vehicle Identification Number
+    private String vin;
 
     private String color;
 
     private LocalDate insuranceExpiryDate;
 
-    // -------------------------------------------------------------------------
-    // Constructors
-    // -------------------------------------------------------------------------
+    /** Optimistic locking: two concurrent changes to the same car cannot both win. */
+    @Version
+    private long version;
 
-    /**
-     * Default no-arg constructor required by JPA.
-     */
     public Car() {
-        // ID generation handled by @PrePersist
     }
 
-    /**
-     * Constructor with fields (excluding ID).
-     */
-    public Car(String licensePlate, CarType carType, double dailyRentalPrice,
-               double depositAmount, CarStatus status, String imageUrl,
-               LocalDate registrationDate, LocalDate lastMaintenanceDate,
-               String vin, String color, LocalDate insuranceExpiryDate) {
-        this.licensePlate = licensePlate;
-        this.carType = carType;
-        this.dailyRentalPrice = dailyRentalPrice;
-        this.depositAmount = depositAmount;
-        this.status = status;
-        this.imageUrl = imageUrl;
-        this.registrationDate = registrationDate;
-        this.lastMaintenanceDate = lastMaintenanceDate;
-        this.vin = vin;
-        this.color = color;
-        this.insuranceExpiryDate = insuranceExpiryDate;
-    }
-
-    // -------------------------------------------------------------------------
-    // Lifecycle Callbacks
-    // -------------------------------------------------------------------------
-
-    /**
-     * Executed automatically before persisting to the database.
-     */
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) {
-            this.id = UUID.randomUUID();
+        if (id == null) {
+            id = UUID.randomUUID();
         }
+        dailyRentalPrice = Money.of(dailyRentalPrice);
+        depositAmount = Money.of(depositAmount);
+    }
+
+    /** True if the car is in service and can be booked for free dates. */
+    public boolean isInService() {
+        return status == CarStatus.AVAILABLE;
+    }
+
+    public String getDisplayName() {
+        return carType == null ? licensePlate : carType.getBrand() + " " + carType.getModel();
     }
 
     // -------------------------------------------------------------------------
-    // Getters and Setters
+    // Getters and setters
     // -------------------------------------------------------------------------
 
     public UUID getId() { return id; }
@@ -119,11 +96,11 @@ public class Car implements Serializable {
     public CarType getCarType() { return carType; }
     public void setCarType(CarType carType) { this.carType = carType; }
 
-    public double getDailyRentalPrice() { return dailyRentalPrice; }
-    public void setDailyRentalPrice(double dailyRentalPrice) { this.dailyRentalPrice = dailyRentalPrice; }
+    public BigDecimal getDailyRentalPrice() { return dailyRentalPrice; }
+    public void setDailyRentalPrice(BigDecimal dailyRentalPrice) { this.dailyRentalPrice = dailyRentalPrice; }
 
-    public double getDepositAmount() { return depositAmount; }
-    public void setDepositAmount(double depositAmount) { this.depositAmount = depositAmount; }
+    public BigDecimal getDepositAmount() { return depositAmount; }
+    public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
 
     public CarStatus getStatus() { return status; }
     public void setStatus(CarStatus status) { this.status = status; }
@@ -146,25 +123,21 @@ public class Car implements Serializable {
     public LocalDate getInsuranceExpiryDate() { return insuranceExpiryDate; }
     public void setInsuranceExpiryDate(LocalDate insuranceExpiryDate) { this.insuranceExpiryDate = insuranceExpiryDate; }
 
-    // -------------------------------------------------------------------------
-    // Overrides
-    // -------------------------------------------------------------------------
+    public long getVersion() { return version; }
+    public void setVersion(long version) { this.version = version; }
+
+    @Override
+    public boolean equals(Object o) {
+        return this == o || (o instanceof Car other && id != null && id.equals(other.id));
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
+    }
 
     @Override
     public String toString() {
-        return "Car{" +
-                "id=" + id +
-                ", licensePlate='" + licensePlate + '\'' +
-                ", carType=" + (carType != null ? carType.getModel() : "null") + // Avoid recursion in toString
-                ", dailyRentalPrice=" + dailyRentalPrice +
-                ", depositAmount=" + depositAmount +
-                ", status=" + status +
-                ", imageUrl='" + imageUrl + '\'' +
-                ", registrationDate=" + registrationDate +
-                ", lastMaintenanceDate=" + lastMaintenanceDate +
-                ", vin='" + vin + '\'' +
-                ", color='" + color + '\'' +
-                ", insuranceExpiryDate=" + insuranceExpiryDate +
-                '}';
+        return "Car{id=" + id + ", plate='" + licensePlate + "', " + getDisplayName() + ", status=" + status + "}";
     }
 }

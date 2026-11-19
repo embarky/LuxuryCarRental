@@ -1,6 +1,12 @@
 package ch.unil.softarch.luxurycarrental.domain.enums;
 
+/**
+ * Whether a car can be rented at all. Availability for specific dates is computed
+ * from the bookings, not stored here.
+ */
 public enum CarStatus {
-    AVAILABLE,   // Vehicle is available for rent
-    UNAVAILABLE  // Vehicle cannot be rented (maintenance, damaged, cleaning, etc.)
+    /** In service: can be booked for any free dates. */
+    AVAILABLE,
+    /** Out of service (repair, cleaning, ...): cannot be booked. */
+    MAINTENANCE
 }
