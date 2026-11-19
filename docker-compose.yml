@@ -37,9 +37,10 @@ services:
       - app
     volumes:
       - ./scripts/seeder:/seeder:ro
-    command: >
-      sh -c "pip install -q --disable-pip-version-check -r /seeder/requirements.txt
-             && python -u /seeder/database_seeder.py"
+    command:
+      - sh
+      - -c
+      - pip install -q --root-user-action=ignore --disable-pip-version-check -r /seeder/requirements.txt && python -u /seeder/database_seeder.py
     restart: "no"
 
 volumes:
