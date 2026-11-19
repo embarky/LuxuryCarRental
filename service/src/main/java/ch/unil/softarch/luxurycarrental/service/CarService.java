@@ -136,7 +136,8 @@ public class CarService {
             throw new DomainException("Car data is missing.");
         }
         Car created = new Car();
-        apply(created, car);
+        apply(created, car);                 // checks the plate before the new car has an id
+        created.setId(UUID.randomUUID());
         em.persist(created);
         return created;
     }

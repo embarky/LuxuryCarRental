@@ -46,6 +46,7 @@ public class Admin implements Serializable {
     }
 
     public Admin(String username, String passwordHash, String name, String email) {
+        this.id = UUID.randomUUID();   // ids are generated in Java (EclipseLink needs them before @PrePersist)
         this.username = username;
         this.password = passwordHash;
         this.name = name;

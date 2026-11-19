@@ -22,7 +22,7 @@ public class CarTypeService {
     @Transactional
     public CarType add(CarType carType) {
         validate(carType);
-        carType.setId(null);
+        carType.setId(UUID.randomUUID());   // never trust an id sent by the client
         em.persist(carType);
         return carType;
     }

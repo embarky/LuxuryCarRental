@@ -51,6 +51,7 @@ public class CustomerService {
             throw new DomainException("Registration data is missing.");
         }
         Customer c = new Customer();
+        c.setId(UUID.randomUUID());
         c.setFirstName(Validation.required(request.firstName, "First name"));
         c.setLastName(Validation.required(request.lastName, "Last name"));
         c.setEmail(Validation.email(request.email));

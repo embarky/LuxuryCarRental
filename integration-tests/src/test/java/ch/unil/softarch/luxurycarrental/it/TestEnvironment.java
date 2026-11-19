@@ -62,18 +62,28 @@ final class TestEnvironment {
             .withEnv("MAIL_SMTP_STARTTLS", "false")
             .dependsOn(MYSQL, MAILPIT)
             .waitingFor(Wait.forHttp("/luxurycarrental/api/cars").forPort(8080).forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(6)))
+                    .withStartupTimeout(Duration.ofMinutes(4)))
             .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("payara")).withPrefix("payara"));
 
     private static boolean started;
+    private static RuntimeException startFailure;
 
     private TestEnvironment() {
     }
 
+    /** Starts everything once; if that failed, the next test classes fail at once instead of waiting again. */
     static synchronized void start() {
+        if (startFailure != null) {
+            throw new IllegalStateException("The test environment could not be started", startFailure);
+        }
         if (!started) {
-            APP.start();          // starts MySQL and Mailpit first
-            started = true;
+            try {
+                APP.start();          // starts MySQL and Mailpit first
+                started = true;
+            } catch (RuntimeException e) {
+                startFailure = e;
+                throw e;
+            }
         }
     }
 

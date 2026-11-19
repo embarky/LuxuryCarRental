@@ -117,6 +117,7 @@ public class Booking implements Serializable {
         }
 
         Booking booking = new Booking();
+        booking.bookingId = UUID.randomUUID();
         booking.customer = customer;
         booking.car = car;
         booking.startDate = period.start();

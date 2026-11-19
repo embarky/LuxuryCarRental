@@ -27,7 +27,7 @@ CREATE TABLE customer (
     drivingLicenseNumber     VARCHAR(255)   NOT NULL,
     drivingLicenseExpiryDate DATE           NOT NULL,
     dateOfBirth              DATE           NOT NULL,
-    verifiedIdentity         TINYINT(1)     NOT NULL DEFAULT 0,
+    verifiedIdentity         BOOLEAN    NOT NULL DEFAULT 0,
     billingAddress           VARCHAR(255),
     balance                  DECIMAL(12, 2) NOT NULL DEFAULT 0,
     creationDate             DATETIME(6)    NOT NULL,
@@ -112,6 +112,6 @@ CREATE TABLE password_reset_code (
     codeHash  VARCHAR(255) NOT NULL,
     expiresAt DATETIME(6)  NOT NULL,
     attempts  INT          NOT NULL DEFAULT 0,
-    used      TINYINT(1)   NOT NULL DEFAULT 0,
+    used      BOOLEAN    NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

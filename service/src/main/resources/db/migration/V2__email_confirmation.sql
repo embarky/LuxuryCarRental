@@ -7,7 +7,7 @@
 -- -----------------------------------------------------------------------------
 
 ALTER TABLE customer
-    ADD COLUMN emailVerified TINYINT(1) NOT NULL DEFAULT 0 AFTER dateOfBirth;
+    ADD COLUMN emailVerified BOOLEAN    NOT NULL DEFAULT 0 AFTER dateOfBirth;
 
 CREATE TABLE verification_code (
     id         VARCHAR(36)  NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE verification_code (
     code_hash  VARCHAR(255) NOT NULL,
     expires_at DATETIME(6)  NOT NULL,
     attempts   INT          NOT NULL DEFAULT 0,
-    used       TINYINT(1)   NOT NULL DEFAULT 0,
+    used       BOOLEAN    NOT NULL DEFAULT 0,
     PRIMARY KEY (id)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
