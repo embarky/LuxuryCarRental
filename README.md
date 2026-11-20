@@ -249,8 +249,8 @@ tests with Testcontainers, CI, demo data, a new user interface and the design re
 
 ## License
 
-The code is available under the [MIT License](LICENSE). The car photos are not covered by it: they keep
-their own free licences, listed in [docs/IMAGE_CREDITS.md](docs/IMAGE_CREDITS.md).
+Released under the [MIT License](LICENSE) © 2025–2026 Hang Yang.
+The car photos are not covered by it: they keep their own free licences, listed in [docs/IMAGE_CREDITS.md](docs/IMAGE_CREDITS.md).
 
 ## Author
 
